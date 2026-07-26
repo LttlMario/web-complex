@@ -349,6 +349,10 @@ function renderSection(sectionName) {
                                 <span>⏱️</span>
                                 <span>Mergi la Pontaj</span>
                             </button>
+                            <button id="btn-marketplace" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2.5 px-5 rounded-xl transition shadow-md flex items-center space-x-2 cursor-pointer">
+                                <span>🛒</span>
+                                <span>Marketplace Legal</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -378,6 +382,21 @@ function renderSection(sectionName) {
                 </div>
             </div>
         `;
+
+        // Activare imediată a logicii pentru butonul marketplace injectat în Dashboard
+        const btnMarketplace = document.getElementById("btn-marketplace");
+        if (btnMarketplace) {
+            const userRole = (user.role || '').toLowerCase();
+            if (userRole === "mecanic" || userRole === "admin" || userRole === "sef mecanic" || userRole === "șef mecanic") {
+                btnMarketplace.classList.remove('hidden');
+                btnMarketplace.addEventListener('click', () => {
+                    window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
+                });
+            } else {
+                btnMarketplace.classList.add('hidden');
+            }
+        }
+
     } else if (sectionName === 'Pontaj') {
         contentArea.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
