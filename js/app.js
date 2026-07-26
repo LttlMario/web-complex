@@ -1049,7 +1049,6 @@ async function initAdminLogic() {
             const defaultRoleVal = settingDefaultRole ? settingDefaultRole.value : 'Mecanic';
 
             try {
-                // Salvăm atât în admin_settings cât și în users pentru compatibilitate maximă cu structura SQL
                 const settingPayload = {
                     id: 1,
                     maintenance_mode: maintenanceVal,
@@ -1078,7 +1077,6 @@ async function initAdminLogic() {
                         default_role: defaultRoleVal
                     }], { onConflict: ['discord_id'] });
 
-                // Înregistrăm acțiunea și în audit_logs
                 await supabaseClient.from('audit_logs').insert([{
                     action: 'UPDATE_ADMIN_SETTINGS',
                     details: JSON.stringify(settingPayload),
@@ -1329,7 +1327,7 @@ Art. 8 – Demisia și încetarea contractului
 
 Angajatul poate demisiona prin notificare scrisă, cu respectarea termenului de preaviz prevăzut de lege sau de prezentul contract.
 
-Angajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectအချိန် respectarea procedurilor legale.
+Angajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectarea procedurilor legale.
 
 La încetarea raporturilor de muncă, angajatul va preda toate bunurile, echipamentele, documentele și materialele aparținând societății.
 
@@ -1382,7 +1380,6 @@ Semnătură:`;
                 return;
             }
 
-            // Activare și salvare automată în tabela Supabase 'contracte'
             try {
                 const contractRecord = {
                     discord_id: user.discordId || 'system_operator',
@@ -1959,6 +1956,7 @@ function initRapoarteModuleLogic() {
     const btnApplyFilters = document.getElementById('btn-apply-filters');
     const filterPeriod = document.getElementById('rep-filter-period');
     const searchInput = document.getElementById('rep-search-input');
+    const btnExport = document.getElementById('btn-export-reports');
 
     if (btnManualReport) {
         btnManualReport.addEventListener('click', () => {
@@ -2035,39 +2033,68 @@ function initRapoarteModuleLogic() {
             });
 
             const totalShiftsCount = filteredShifts.length;
-            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
+            const avgShiftMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
 
             if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
             if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
             if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
-            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
+            if (repAvgShift) repAvgShift.textContent = formatDuration(avgShiftMs);
 
-            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
+            const sortedStats = Object.values(userStats).sort((a, b) => b.ms - a.ms);
 
-            if (sortedTeam.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
+            if (sortedStats.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat pentru filtrele aplicate.</td></tr>`;
                 return;
             }
 
-            tableBody.innerHTML = sortedTeam.map((item, index) => {
+            tableBody.innerHTML = sortedStats.map((item, index) => {
                 const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
                 return `
                     <tr class="hover:bg-slate-800/30 transition">
-                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
-                        <td class="py-3 text-indigo-400 text-center">${item.shifts}</td>
-                        <td class="py-3 text-emerald-400 font-mono font-medium text-right">${formatDuration(item.ms)}</td>
+                        <td class="py-3 text-slate-200 font-medium flex items-center space-x-2">
+                            <span>${medal}</span>
+                            <span>${item.name}</span>
+                        </td>
+                        <td class="py-3 text-center text-indigo-400 font-medium">${item.shifts}</td>
+                        <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.ms)}</td>
                     </tr>
                 `;
             }).join('');
+
         } catch (err) {
-            console.error("Eroare la încărcarea rapoartelor:", err);
+            console.error("Eroare încărcare rapoarte:", err);
             tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea datelor.</td></tr>`;
         }
     };
 
     if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
     if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
-    if (searchInput) searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') loadReportData(); });
+    
+    if (btnExport) {
+        btnExport.addEventListener('click', async () => {
+            try {
+                const { data: shifts } = await supabaseClient.from('shifts').select('*');
+                if (!shifts || shifts.length === 0) {
+                    alert("Nu există date de exportat.");
+                    return;
+                }
+                let csvContent = "data:text/csv;charset=utf-8,Discord ID,Data,Tip Tura,Start,Stop,Durata (MS)\n";
+                shifts.forEach(s => {
+                    csvContent += `"${s.discord_id}","${s.date}","${s.shift_type || 'Tură de Zi'}","${s.start_time}","${s.end_time}",${s.duration_ms || 0}\n`;
+                });
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `raport_ture_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (e) {
+                console.error("Eroare export CSV:", e);
+            }
+        });
+    }
 
     loadReportData();
 }
+```[cite: 1]
