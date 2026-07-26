@@ -19,77 +19,35 @@ const SUPABASE_URL = "https://vkvsabbbawyiurnaiugo.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdnNhYmJiYXd5aXVybmFpdWdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTA0Njk1NiwiZXhwIjoyMTAwNjIyOTU2fQ.1D67DT0lul6bgcRSmbr5-JEHZmErTNvCXB4Up1g3zWw";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-
-document.addEventListener("DOMContentLoaded", () => {
-    const btnMasaCrafting = document.getElementById("btn-masa-crafting");
-    
-    if (btnMasaCrafting) {
-        const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
-        const allowedRole = (btnMasaCrafting.getAttribute('data-role') || '').toLowerCase();
-
-        if (userRole === allowedRole || userRole === "admin") {
-            btnMasaCrafting.classList.remove('hidden');
-            btnMasaCrafting.addEventListener('click', () => {
-                window.open("https://lttlmario.github.io/masa-crafting/", "_blank");
-            });
-        } else {
-            btnMasaCrafting.classList.add('hidden');
-        }
-    }
-});
-document.addEventListener("DOMContentLoaded", () => {
-    const btnLocatiiIlegale = document.getElementById("btn-locatii-ilegale");
-    
-    if (btnLocatiiIlegale) {
-        const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
-        const allowedRole = (btnLocatiiIlegale.getAttribute('data-role') || '').toLowerCase();
-
-        if (userRole === allowedRole || userRole === "admin") {
-            btnLocatiiIlegale.classList.remove('hidden');
-            btnLocatiiIlegale.addEventListener('click', () => {
-                window.open("https://lttlmario.github.io/hatra-ilegale-bzone/", "_blank");
-            });
-        } else {
-            btnLocatiiIlegale.classList.add('hidden');
-        }
-    }
-});
 document.addEventListener("DOMContentLoaded", () => {
     const btnMarketplace = document.getElementById("btn-marketplace");
-    const btnMarketplaceIlegal = document.getElementById("btn-marketplace-ilegal");
     
-    if (btnMarketplace || btnMarketplaceIlegal) {
-        const userRole = (localStorage.getItem('userRole') || '').toLowerCase(); 
+    // Verificăm dacă butonul există în pagină pentru a evita eroarea de null
+    if (btnMarketplace) {
+        // Obținem rolul utilizatorului curent (adaptează cheia în funcție de cum salvezi tu rolul, ex: localStorage.getItem('userRole'))
+        const userRole = localStorage.getItem('userRole') || ''; 
 
-        if (userRole === "mecanic" || userRole === "admin" || userRole === "sef mecanic" || userRole === "șef mecanic") {
-            if (btnMarketplace) {
-                btnMarketplace.classList.remove('hidden');
-                btnMarketplace.addEventListener('click', () => {
-                    window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
-                });
-            }
-            if (btnMarketplaceIlegal) {
-                btnMarketplaceIlegal.classList.remove('hidden');
-                btnMarketplaceIlegal.addEventListener('click', () => {
-                    window.open("https://lttlmario.github.io/marketplace-ilegal/", "_blank");
-                });
-            }
+        // Verificăm dacă utilizatorul are rolul de "Mecanic" (sau dacă e setat să aibă acces)
+        if (userRole === "Mecanic" || userRole === "admin") { // poți adăuga și admin dacă vrei să aibă acces la tot
+            btnMarketplace.classList.remove('hidden');
+            
+            // Acțiunea butonului: deschide link-ul extern într-o filă nouă
+            btnMarketplace.addEventListener('click', () => {
+                window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
+            });
         } else {
-            if (btnMarketplace) btnMarketplace.classList.add('hidden');
-            if (btnMarketplaceIlegal) btnMarketplaceIlegal.classList.add('hidden');
+            // Dacă nu are rolul necesar, ne asigurăm că rămâne ascuns
+            btnMarketplace.classList.add('hidden');
         }
     }
 });
-
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Sistemul a pornit. Verificăm starea de autentificare și structura bazei de date...");
+    console.log("Sistemul a pornit. Verificăm starea de autentificare...");
 
     await handleDiscordCallback();
     checkAuthStatus();
     updateSidebarBranding();
     initAutomaticWeeklyReportChecker();
-    await verifyAndActivateDatabaseStructure();
 
     const loginBtn = document.getElementById('login-btn');
     if (loginBtn) {
@@ -121,6 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
             const isMecanic = userRole === 'mecanic' || !userRole;
 
+            // Restricționare acces conform ierarhiei (Familia vede tot ce vede un mecanic dar sub manager, deci nu vede Contracte, Rapoarte, Admin):
             if (isMecanic || isSefMecanic) {
                 if (section === 'Contracte' || section === 'Rapoarte' || section === 'Admin') {
                     alert("Nu ai permisiunea de a accesa această secțiune!");
@@ -154,25 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 });
-
-async function verifyAndActivateDatabaseStructure() {
-    try {
-        console.log("Verificăm și activăm tabelele din structura SQL (users, shifts, contracte, admin_settings, audit_logs)...");
-        
-        const { error: errShifts } = await supabaseClient.from('shifts').select('id').limit(1);
-        if (errShifts) console.warn("Tabela 'shifts' necesită atenție sau nu este accesibilă direct:", errShifts.message);
-
-        const { error: errContracte } = await supabaseClient.from('contracte').select('id').limit(1);
-        if (errContracte) console.warn("Tabela 'contracte' necesită atenție:", errContracte.message);
-
-        const { error: errUsers } = await supabaseClient.from('users').select('discord_id').limit(1);
-        if (errUsers) console.warn("Tabela 'users' necesită atenție:", errUsers.message);
-
-        console.log("Structura bazei de date este complet integrată și activă.");
-    } catch (e) {
-        console.error("Eroare la verificare structură SQL:", e);
-    }
-}
 
 function updateSidebarBranding() {
     const brandContainer = document.querySelector('aside .p-6') || document.querySelector('aside');
@@ -346,8 +286,6 @@ async function handleDiscordCallback() {
                 role: discordUser.role,
                 service: discordUser.service
             }));
-            
-            localStorage.setItem('userRole', discordUser.role);
 
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error) {
@@ -398,13 +336,13 @@ function renderSection(sectionName) {
                     <div class="absolute right-0 top-0 bottom-0 w-1/3 bg-emerald-500/5 blur-3xl pointer-events-none"></div>
                     <div class="relative z-10 max-w-2xl">
                         <span class="inline-block px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full mb-3">
-                            Sistem Activ & Pregătit (Structură SQL Activată)
+                            Sistem Activ & Pregătit
                         </span>
                         <h2 class="text-2xl md:text-3xl font-bold text-slate-100 tracking-tight">
                             Salut, <span class="text-emerald-400">${userName}</span>! 👋
                         </h2>
                         <p class="text-slate-400 text-sm mt-2 leading-relaxed">
-                            Bine ai revenit în panoul de control. Aici îți poți gestiona turele, înștiințăriile și baza de date în timp real.
+                            Bine ai revenit în panoul de control. Aici îți poți gestiona turele și înștiințările în timp real.
                         </p>
                         <div class="flex flex-wrap gap-3 mt-6">
                             <button onclick="renderSection('Pontaj')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-2.5 px-5 rounded-xl transition shadow-md flex items-center space-x-2 cursor-pointer">
@@ -412,10 +350,8 @@ function renderSection(sectionName) {
                                 <span>Mergi la Pontaj</span>
                             </button>
                             <button id="btn-marketplace" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2.5 px-5 rounded-xl transition shadow-md flex items-center space-x-2 cursor-pointer">
+                                <span>🛒</span>
                                 <span>Marketplace Legal</span>
-                            </button>
-                            <button id="btn-marketplace-ilegal" class="hidden bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs py-2.5 px-5 rounded-xl transition shadow-md flex items-center space-x-2 cursor-pointer">
-                                <span>Marketplace Ilegal</span>
                             </button>
                         </div>
                     </div>
@@ -447,26 +383,18 @@ function renderSection(sectionName) {
             </div>
         `;
 
+        // Activare imediată a logicii pentru butonul marketplace injectat în Dashboard
         const btnMarketplace = document.getElementById("btn-marketplace");
-        const btnMarketplaceIlegal = document.getElementById("btn-marketplace-ilegal");
-        const currentRole = (user.role || '').toLowerCase();
-
-        if (currentRole === "mecanic" || currentRole === "admin" || currentRole === "sef mecanic" || currentRole === "șef mecanic") {
-            if (btnMarketplace) {
+        if (btnMarketplace) {
+            const userRole = (user.role || '').toLowerCase();
+            if (userRole === "mecanic" || userRole === "admin" || userRole === "sef mecanic" || userRole === "șef mecanic") {
                 btnMarketplace.classList.remove('hidden');
                 btnMarketplace.addEventListener('click', () => {
                     window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
                 });
+            } else {
+                btnMarketplace.classList.add('hidden');
             }
-            if (btnMarketplaceIlegal) {
-                btnMarketplaceIlegal.classList.remove('hidden');
-                btnMarketplaceIlegal.addEventListener('click', () => {
-                    window.open("https://lttlmario.github.io/marketplace-ilegal/", "_blank");
-                });
-            }
-        } else {
-            if (btnMarketplace) btnMarketplace.classList.add('hidden');
-            if (btnMarketplaceIlegal) btnMarketplaceIlegal.classList.add('hidden');
         }
 
     } else if (sectionName === 'Pontaj') {
@@ -749,7 +677,7 @@ function renderSection(sectionName) {
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 <div class="lg:col-span-5 bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg space-y-4">
                     <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-                        <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider">Date Contract (Salvate în Tabela Supabase 'contracte')</h3>
+                        <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider">Date Contract</h3>
                         <span id="contract-number-badge" class="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">CN-2026-00019</span>
                     </div>
 
@@ -799,7 +727,7 @@ function renderSection(sectionName) {
 
                         <div class="pt-2 space-y-2">
                             <button type="button" id="btn-genereaza-contract" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl transition text-xs shadow-md cursor-pointer">
-                                Generează & Salvează Contract în Baza de Date
+                                Generează Contract
                             </button>
                             <button type="button" id="btn-copiaza-contract" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl transition text-xs shadow-md cursor-pointer">
                                 Copiază Contract
@@ -864,8 +792,8 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
         contentArea.innerHTML = `
             <div class="space-y-6">
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
-                    <h3 class="text-xl font-bold text-slate-100 mb-2">Panou Administrare Sisteme (Baza de Date & Tabele Active)</h3>
-                    <p class="text-slate-400 text-sm mb-6">Gestionează utilizatorii înregistrați și datele din tabelele Supabase (` + '`users`' + `, ` + '`shifts`' + `, ` + '`contracte`' + `, ` + '`admin_settings`' + `, ` + '`audit_logs`' + `).</p>
+                    <h3 class="text-xl font-bold text-slate-100 mb-2">Panou Administrare Sisteme</h3>
+                    <p class="text-slate-400 text-sm mb-6">Gestionează utilizatorii înregistrați și datele din baza de date Supabase.</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
@@ -874,9 +802,9 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
                             <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs rounded-md">Status: Online</span>
                         </div>
                         <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                            <h4 class="text-sm font-semibold text-slate-200 mb-1">Conexiune Supabase & Structură SQL</h4>
-                            <p class="text-xs text-slate-400 mb-3">Tabelele și tabelele de audit sunt sincronizate cu succes.</p>
-                            <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs rounded-md">Status: Activ & Sincronizat</span>
+                            <h4 class="text-sm font-semibold text-slate-200 mb-1">Conexiune Supabase</h4>
+                            <p class="text-xs text-slate-400 mb-3">Baza de date conectată cu succes prin Service Role Key.</p>
+                            <span class="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs rounded-md">Status: Conectat</span>
                         </div>
                     </div>
 
@@ -899,9 +827,10 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
                     </div>
                 </div>
 
+                <!-- Secțiune Nouă Setări Admin Dinamice Extinse (Sistem & Utilizatori) -->
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
-                    <h3 class="text-xl font-bold text-slate-100 mb-2">Setări Avansate Administrator & Politici Sistem</h3>
-                    <p class="text-slate-400 text-sm mb-6">Configurări complete salvate direct în tabela ` + '`admin_settings`' + ` din baza de date.</p>
+                    <h3 class="text-xl font-bold text-slate-100 mb-2">Setări Avansate Administrator & Sistem</h3>
+                    <p class="text-slate-400 text-sm mb-6">Configurări complete de sistem și politici pentru utilizatori salvate direct în baza de date.</p>
                     
                     <div id="admin-settings-alert" class="hidden mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium"></div>
 
@@ -952,7 +881,7 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
 
                     <div class="flex justify-end mt-6">
                         <button type="button" id="btn-save-admin-settings" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-6 rounded-xl transition text-xs shadow-lg cursor-pointer">
-                            Salvează Toate Setările în Tabela 'admin_settings'
+                            Salvează Toate Setările
                         </button>
                     </div>
                 </div>
@@ -1015,7 +944,7 @@ async function initAdminLogic() {
 
     if (settingMaintenance && settingThreshold) {
         try {
-            const { data: configData } = await supabaseClient.from('admin_settings').select('*').eq('id', 1).single();
+            const { data: configData } = await supabaseClient.from('users').select('*').eq('discord_id', 'admin_config_global').single();
             if (configData) {
                 settingMaintenance.checked = configData.maintenance_mode || false;
                 if (settingDiscordLogs) settingDiscordLogs.checked = configData.discord_logs_active !== false;
@@ -1024,16 +953,8 @@ async function initAdminLogic() {
                 if (settingDefaultRole) settingDefaultRole.value = configData.default_role || 'Mecanic';
             }
         } catch (e) {
-            try {
-                const { data: fallbackConfig } = await supabaseClient.from('users').select('*').eq('discord_id', 'admin_config_global').single();
-                if (fallbackConfig) {
-                    settingMaintenance.checked = fallbackConfig.maintenance_mode || false;
-                    settingThreshold.value = fallbackConfig.threshold_value || 100;
-                }
-            } catch (errFallback) {
-                settingMaintenance.checked = false;
-                settingThreshold.value = 100;
-            }
+            settingMaintenance.checked = false;
+            settingThreshold.value = 100;
         }
     }
 
@@ -1046,21 +967,7 @@ async function initAdminLogic() {
             const defaultRoleVal = settingDefaultRole ? settingDefaultRole.value : 'Mecanic';
 
             try {
-                const settingPayload = {
-                    id: 1,
-                    maintenance_mode: maintenanceVal,
-                    discord_logs_active: discordLogsVal,
-                    threshold_value: thresholdVal,
-                    max_shift_hours: maxShiftVal,
-                    default_role: defaultRoleVal,
-                    updated_at: new Date().toISOString()
-                };
-
-                const { error: errAdminSettings } = await supabaseClient
-                    .from('admin_settings')
-                    .upsert([settingPayload], { onConflict: ['id'] });
-
-                const { error: errUsersConfig } = await supabaseClient
+                const { error } = await supabaseClient
                     .from('users')
                     .upsert([{
                         discord_id: 'admin_config_global',
@@ -1074,20 +981,14 @@ async function initAdminLogic() {
                         default_role: defaultRoleVal
                     }], { onConflict: ['discord_id'] });
 
-                await supabaseClient.from('audit_logs').insert([{
-                    action: 'UPDATE_ADMIN_SETTINGS',
-                    details: JSON.stringify(settingPayload),
-                    created_at: new Date().toISOString()
-                }]);
-
-                if (!errAdminSettings || !errUsersConfig) {
+                if (!error) {
                     if (settingsAlert) {
-                        settingsAlert.textContent = "Toate setările avansate de sistem, tabelele admin_settings și audit_logs au fost actualizate și activate cu succes!";
+                        settingsAlert.textContent = "Toate setările avansate de sistem și utilizatori au fost salvate cu succes în baza de date!";
                         settingsAlert.classList.remove('hidden');
                         setTimeout(() => settingsAlert.classList.add('hidden'), 4000);
                     }
                 } else {
-                    alert("Eroare la salvarea setărilor în tabelele Supabase.");
+                    alert("Eroare la salvarea setărilor în Supabase.");
                 }
             } catch (err) {
                 console.error("Eroare setări admin:", err);
@@ -1108,7 +1009,6 @@ async function updateUserRole(discordId, newRole) {
             console.error(error);
         } else {
             alert(`Rolul a fost actualizat cu succes la: ${newRole}`);
-            localStorage.setItem('userRole', newRole);
         }
     } catch (err) {
         console.error("Eroare actualizare rol:", err);
@@ -1363,50 +1263,22 @@ Semnătură:`;
     };
 
     if (btnGenereaza) {
-        btnGenereaza.addEventListener('click', async () => {
+        btnGenereaza.addEventListener('click', () => {
             const nume = document.getElementById('c-nume').value.trim();
             const cnp = document.getElementById('c-cnp').value.trim();
             const telefon = document.getElementById('c-telefon').value.trim();
             const manager = document.getElementById('c-manager').value.trim();
-            const functie = document.getElementById('c-functie').value;
-            const contractNo = document.getElementById('contract-number-badge').textContent;
-            const user = JSON.parse(localStorage.getItem('workforce_user')) || {};
 
             if (!manager || !nume || !cnp || !telefon) {
                 alert("Te rugăm să completezi toate câmpurile obligatorii marcate cu * (Manager, Nume, CNP, Telefon)!");
                 return;
             }
 
-            try {
-                const contractRecord = {
-                    discord_id: user.discordId || 'system_operator',
-                    contract_no: contractNo,
-                    nume_angajat: nume,
-                    cnp: cnp,
-                    telefon: telefon,
-                    functie: functie,
-                    manager: manager,
-                    created_at: new Date().toISOString()
-                };
-
-                const { error: dbError } = await supabaseClient
-                    .from('contracte')
-                    .insert([contractRecord]);
-
-                if (dbError) {
-                    console.error("Eroare la salvarea contractului în baza de date:", dbError.message);
-                } else {
-                    console.log("Contractul a fost activat și salvat cu succes în tabela Supabase 'contracte'.");
-                }
-            } catch (err) {
-                console.error("Eroare conexiune contracte DB:", err);
-            }
-
             updateTimestampText();
             previewBox.textContent = getContractTextContent();
             previewBox.scrollTop = 0;
             if (previewStatus) {
-                previewStatus.textContent = "Generat și Salvat în DB cu succes!";
+                previewStatus.textContent = "Generat cu succes!";
                 previewStatus.className = "text-emerald-400 font-medium";
             }
         });
@@ -1508,7 +1380,7 @@ Semnătură:`;
             const contractNo = document.getElementById('contract-number-badge').textContent;
 
             const formData = new FormData();
-            const messageContent = `📜 **CONTRACT NOU GENERAT, SALVAT ÎN DB & SEMNAT** 📜\n\n` +
+            const messageContent = `📜 **CONTRACT NOU GENERAT & SEMNAT** 📜\n\n` +
                                  `🆔 **Număr Contract:** \`${contractNo}\`\n` +
                                  `👤 **Angajat:** ${nume} (CNP: \`${cnp}\`, Tel: \`${telefon}\`)\n` +
                                  `🛠️ **Funcție:** \`${functie}\`\n` +
@@ -1528,7 +1400,7 @@ Semnătură:`;
                 });
 
                 if (response.ok || response.status === 204) {
-                    alert("Contractul, înregistrările din baza de date și imaginile au fost trimise cu succes pe Discord!");
+                    alert("Contractul și imaginile au fost trimise cu succes pe Discord!");
                 } else {
                     alert("A apărut o eroare la trimiterea pe Discord.");
                 }
@@ -1584,41 +1456,6 @@ function initAdvancedPontajLogic() {
 
     if (btnStart) {
         btnStart.addEventListener('click', async () => {
-            const now = new Date();
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
-            const totalMinutes = currentHour * 60 + currentMinute;
-
-            // Validare ore stricte pentru Tura de Noapte (20:00 - 23:00 -> 1200 - 1380 minute)
-            if (selectedShiftType.includes('Noapte')) {
-                const startNightMin = 20 * 60; // 1200 (20:00)
-                const endNightMin = 23 * 60;   // 1380 (23:00)
-                if (totalMinutes < startNightMin || totalMinutes > endNightMin) {
-                    if (validationAlert) {
-                        validationAlert.textContent = "Eroare: Tura de Noapte poate fi pornită exclusiv în intervalul orar 20:00 - 23:00!";
-                        validationAlert.classList.remove('hidden');
-                    }
-                    return;
-                }
-            }
-
-            // Validare ore stricte pentru Tura de Zi (23:01 - 19:59)
-            if (selectedShiftType.includes('Zi')) {
-                const startDayMin = 23 * 60 + 1; // 1381 (23:01)
-                const endDayMin = 19 * 60 + 59;  // 1199 (19:59)
-                // Este valabil între 23:01 și 23:59 sau între 00:00 și 19:59
-                const isDuringDay = (totalMinutes >= startDayMin && totalMinutes <= 1439) || (totalMinutes >= 0 && totalMinutes <= endDayMin);
-                if (!isDuringDay) {
-                    if (validationAlert) {
-                        validationAlert.textContent = "Eroare: Tura de Zi poate fi pornită exclusiv în intervalul orar 23:01 - 19:59!";
-                        validationAlert.classList.remove('hidden');
-                    }
-                    return;
-                }
-            }
-
-            if (validationAlert) validationAlert.classList.add('hidden');
-
             const timestamp = Date.now();
             shiftState = {
                 status: 'active',
@@ -1742,14 +1579,6 @@ function initAdvancedPontajLogic() {
             timerDisplay.textContent = formatDuration(totalElapsed);
         }
     }
-}
-
-function formatDuration(ms) {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 async function sendDiscordLog(message) {
@@ -1960,10 +1789,11 @@ async function generateAndSendWeeklyReport(isManual = false) {
 function initAutomaticWeeklyReportChecker() {
     setInterval(() => {
         const now = new Date();
-        const day = now.getDay(); 
+        const day = now.getDay(); // 0 = Duminică
         const hours = now.getHours();
         const minutes = now.getMinutes();
 
+        // Duminică (0) la ora 19:00 (19:00 - 19:01)
         if (day === 0 && hours === 19 && minutes === 0) {
             const lastSentKey = 'workforce_last_weekly_report_date';
             const todayStr = now.toDateString();
@@ -1974,7 +1804,7 @@ function initAutomaticWeeklyReportChecker() {
                 generateAndSendWeeklyReport(false);
             }
         }
-    }, 60000);
+    }, 60000); // Verificare la fiecare minut
 }
 
 function initRapoarteModuleLogic() {
@@ -1989,14 +1819,31 @@ function initRapoarteModuleLogic() {
     const filterPeriod = document.getElementById('rep-filter-period');
     const searchInput = document.getElementById('rep-search-input');
 
-    async function loadReportsData(filter = 'all', searchQuery = '') {
+    if (btnManualReport) {
+        btnManualReport.addEventListener('click', () => {
+            generateAndSendWeeklyReport(true);
+        });
+    }
+
+    const loadReportData = async () => {
         if (!tableBody) return;
+        tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Se încarcă rapoartele din baza de date...</td></tr>`;
+
         try {
             const { data: shifts, error: shiftsError } = await supabaseClient.from('shifts').select('*');
             const { data: users, error: usersError } = await supabaseClient.from('users').select('*');
 
             if (shiftsError || usersError) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea datelor din baza de date.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la citirea datelor din Supabase.</td></tr>`;
+                return;
+            }
+
+            if (!shifts || shifts.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio tură înregistrată în baza de date.</td></tr>`;
+                if (repTotalHours) repTotalHours.textContent = "00:00:00";
+                if (repTotalShifts) repTotalShifts.textContent = "0";
+                if (repTotalUsers) repTotalUsers.textContent = "0";
+                if (repAvgShift) repAvgShift.textContent = "00:00:00";
                 return;
             }
 
@@ -2007,53 +1854,59 @@ function initRapoarteModuleLogic() {
                 });
             }
 
-            let filteredShifts = shifts || [];
+            const period = filterPeriod ? filterPeriod.value : 'all';
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const now = new Date();
 
-            // Filtrare după perioadă
-            if (filter === 'today') {
-                const todayStr = new Date().toLocaleDateString();
-                filteredShifts = filteredShifts.filter(s => s.date === todayStr);
-            } else if (filter === 'week') {
-                const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-                filteredShifts = filteredShifts.filter(s => {
-                    const shiftTime = new Date(s.date).getTime();
-                    return !isNaN(shiftTime) && shiftTime >= sevenDaysAgo;
-                });
-            }
+            const filteredShifts = shifts.filter(s => {
+                // Filtrare după perioadă
+                if (period === 'today') {
+                    const shiftDate = new Date(s.date);
+                    if (shiftDate.toDateString() !== now.toDateString()) return false;
+                } else if (period === 'week') {
+                    const shiftDate = new Date(s.date);
+                    const weekAgo = new Date();
+                    weekAgo.setDate(now.getDate() - 7);
+                    if (shiftDate < weekAgo) return false;
+                }
 
-            let totalMsAll = 0;
+                // Filtrare după nume mecanic
+                if (searchTerm) {
+                    const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
+                    if (!mName.includes(searchTerm)) return false;
+                }
+
+                return true;
+            });
+
+            let totalMs = 0;
+            const activeUsersSet = new Set();
             const userStats = {};
-            const activeUsers = new Set();
 
             filteredShifts.forEach(s => {
                 const ms = s.duration_ms || 0;
-                totalMsAll += ms;
-                activeUsers.add(s.discord_id);
+                totalMs += ms;
+                activeUsersSet.add(s.discord_id);
 
-                const name = userMap[s.discord_id] || 'Mecanic Necunoscut';
                 if (!userStats[s.discord_id]) {
-                    userStats[s.discord_id] = { name: name, shifts: 0, ms: 0 };
+                    userStats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', shifts: 0, ms: 0 };
                 }
                 userStats[s.discord_id].shifts += 1;
                 userStats[s.discord_id].ms += ms;
             });
 
-            // Căutare după mecanic
-            let sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
-            if (searchQuery.trim() !== '') {
-                const q = searchQuery.toLowerCase();
-                sortedTeam = sortedTeam.filter(item => item.name.toLowerCase().includes(q));
-            }
+            const totalShiftsCount = filteredShifts.length;
+            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
 
-            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMsAll);
-            if (repTotalShifts) repTotalShifts.textContent = filteredShifts.length;
-            if (repTotalUsers) repTotalUsers.textContent = activeUsers.size;
-            
-            const avgMs = filteredShifts.length > 0 ? Math.floor(totalMsAll / filteredShifts.length) : 0;
+            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
+            if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
+            if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
             if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
 
+            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
+
             if (sortedTeam.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio înregistrare găsită.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="3" colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
                 return;
             }
 
@@ -2062,37 +1915,35 @@ function initRapoarteModuleLogic() {
                 return `
                     <tr class="hover:bg-slate-800/30 transition">
                         <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
-                        <td class="py-3 text-center text-indigo-400 font-mono">${item.shifts}</td>
-                        <td class="py-3 text-right text-emerald-400 font-mono">${formatDuration(item.ms)}</td>
+                        <td class="py-3 text-center text-indigo-400 font-semibold">${item.shifts}</td>
+                        <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.ms)}</td>
                     </tr>
                 `;
             }).join('');
+
         } catch (err) {
-            console.error("Eroare încărcare rapoarte:", err);
+            console.error("Eroare la încărcarea rapoartelor:", err);
+            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea rapoartelor din baza de date.</td></tr>`;
         }
-    }
+    };
 
-    if (btnManualReport) {
-        btnManualReport.addEventListener('click', () => {
-            generateAndSendWeeklyReport(true);
+    if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
+    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') loadReportData();
         });
     }
 
-    if (btnRefresh) {
-        btnRefresh.addEventListener('click', () => {
-            const period = filterPeriod ? filterPeriod.value : 'all';
-            const query = searchInput ? searchInput.value : '';
-            loadReportsData(period, query);
-        });
-    }
-
-    if (btnApplyFilters) {
-        btnApplyFilters.addEventListener('click', () => {
-            const period = filterPeriod ? filterPeriod.value : 'all';
-            const query = searchInput ? searchInput.value : '';
-            loadReportsData(period, query);
-        });
-    }
-
-    loadReportsData();
+    loadReportData();
 }
+
+function formatDuration(ms) {
+    if (isNaN(ms) || ms < 0) return "00:00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+```[cite: 8]
