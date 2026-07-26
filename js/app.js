@@ -20,24 +20,19 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function formatDuration(ms) {
-    if (!ms || isNaN(ms)) return "00:00:00";
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
 
 document.addEventListener("DOMContentLoaded", () => {
     const btnMasaCrafting = document.getElementById("btn-masa-crafting");
     
     if (btnMasaCrafting) {
         const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
+        // Preluăm rolul permis direct din atributul elementului (ex: "Mecanic")
         const allowedRole = (btnMasaCrafting.getAttribute('data-role') || '').toLowerCase();
 
         if (userRole === allowedRole || userRole === "admin") {
             btnMasaCrafting.classList.remove('hidden');
+            // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
+            // sau o poți muta aici pentru consistență:
             btnMasaCrafting.addEventListener('click', () => {
                 window.open("https://lttlmario.github.io/masa-crafting/", "_blank");
             });
@@ -46,16 +41,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 });
-
 document.addEventListener("DOMContentLoaded", () => {
     const btnLocatiiIlegale = document.getElementById("btn-locatii-ilegale");
     
     if (btnLocatiiIlegale) {
         const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
+        // Preluăm rolul permis direct din atributul elementului (ex: "Familia")
         const allowedRole = (btnLocatiiIlegale.getAttribute('data-role') || '').toLowerCase();
 
         if (userRole === allowedRole || userRole === "admin") {
             btnLocatiiIlegale.classList.remove('hidden');
+            // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
+            // sau o poți muta aici pentru consistență:
             btnLocatiiIlegale.addEventListener('click', () => {
                 window.open("https://lttlmario.github.io/hatra-ilegale-bzone/", "_blank");
             });
@@ -64,7 +61,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 });
-
 document.addEventListener("DOMContentLoaded", () => {
     const btnMarketplace = document.getElementById("btn-marketplace");
     const btnMarketplaceIlegal = document.getElementById("btn-marketplace-ilegal");
@@ -130,14 +126,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
             const isMecanic = userRole === 'mecanic' || !userRole;
 
-            if (isMecanic || isSefMecanic || isFamilia) {
+            if (isMecanic || isSefMecanic) {
                 if (section === 'Contracte' || section === 'Rapoarte' || section === 'Admin') {
                     alert("Nu ai permisiunea de a accesa această secțiune!");
                     return;
                 }
-            } else if (isManager && section === 'Admin') {
-                alert("Nu ai permisiunea de a accesa această secțiune!");
-                return;
+            } else if (isFamilia) {
+                if (section === 'Contracte' || section === 'Rapoarte' || section === 'Admin') {
+                    alert("Nu ai permisiunea de a accesa această secțiune!");
+                    return;
+                }
+            } else if (isManager) {
+                if (section === 'Admin') {
+                    alert("Nu ai permisiunea de a accesa această secțiune!");
+                    return;
+                }
+            } else if (!isAdmin) {
+                if (section === 'Admin') {
+                    alert("Nu ai permisiunea de a accesa această secțiune!");
+                    return;
+                }
             }
 
             navLinks.forEach(item => {
@@ -424,6 +432,29 @@ function renderSection(sectionName) {
                 </div>
             </div>
         `;
+
+        const btnMarketplace = document.getElementById("btn-marketplace");
+        const btnMarketplaceIlegal = document.getElementById("btn-marketplace-ilegal");
+        const currentRole = (user.role || '').toLowerCase();
+
+        if (currentRole === "mecanic" || currentRole === "admin" || currentRole === "sef mecanic" || currentRole === "șef mecanic") {
+            if (btnMarketplace) {
+                btnMarketplace.classList.remove('hidden');
+                btnMarketplace.addEventListener('click', () => {
+                    window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
+                });
+            }
+            if (btnMarketplaceIlegal) {
+                btnMarketplaceIlegal.classList.remove('hidden');
+                btnMarketplaceIlegal.addEventListener('click', () => {
+                    window.open("https://lttlmario.github.io/marketplace-ilegal/", "_blank");
+                });
+            }
+        } else {
+            if (btnMarketplace) btnMarketplace.classList.add('hidden');
+            if (btnMarketplaceIlegal) btnMarketplaceIlegal.classList.add('hidden');
+        }
+
     } else if (sectionName === 'Pontaj') {
         contentArea.innerHTML = `
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -1183,7 +1214,110 @@ function initContractLogic() {
         const dataStart = document.getElementById('c-data').value;
         const contractNo = document.getElementById('contract-number-badge').textContent;
 
-        return `CONTRACT INDIVIDUAL DE MUNCĂ\nNr. ${contractNo}\n\nÎncheiat între:\n\nAngajator: ${companie}, cu sediul în Los Santos pe Innocence Boulevard, reprezentată legal de ${manager}, denumită în continuare Angajator,\n\nși\n\nSalariat:\n${nume}\n\ndomiciliat(ă) în Los Santos,\nCNP: ${cnp},\nTelefon: ${telefon},\ndenumit(ă) în continuare Angajat.\n\nArt. 1 – Obiectul contractului\n\nAngajatul este încadrat în funcția de ${functie} în cadrul activității de service auto și/sau spălătorie auto, conform fișei postului anexate la prezentul contract.\n\nArt. 2 – Durata contractului\n\nContractul se încheie pe perioadă: Perioada Nedeterminata\n\nData începerii activității este ${dataStart}.\n\nArt. 3 – Locul muncii\n\nActivitatea se va desfășura la punctul de lucru al ${companie} situat în Los Santos pe Innocence Boulevard, precum și în alte locații ale societății, dacă este necesar.\n\nArt. 4 – Programul de lucru\n\nProgramul normal de lucru este de 3 ore/zi, între ora ${program}, conform programului stabilit de angajator si Primaria Orasului Los Santos.\n\nArt. 5 – Salarizarea\n\nSalariul de bază net: ${salariu}.\nPlata salariului se efectuează săptămânal in fiecare Duminica.\nAngajatul poate beneficia de bonusuri sau prime de performanță, conform politicii societății.\nOrele suplimentare se efectuează numai cu aprobarea angajatorului și nu sunt remunerate prin salariul de bază. Compensarea acestora se realizează exclusiv din sumele încasate cu titlu de bacșiș („ciubuc”) sau din veniturile obținute în urma lucrărilor efectuate în intervalul respectiv, conform înțelegerii dintre părți.\n\nArt. 6 – Obligațiile angajatului\n\nAngajatul se obligă:\n\nsă respecte programul de lucru;\nsă execute atribuțiile prevăzute în fișa postului;\nsă utilizeze corespunzător echipamentele și uneltele societății;\nsă respecte normele de securitate și sănătate în muncă;\nsă păstreze confidențialitatea informațiilor privind activitatea societății și a clienților;\nsă manifeste un comportament profesionist față de clienți și colegi;\nsă informeze imediat angajatorul despre orice incident sau defecțiune constatată.\n\nArt. 7 – Obligațiile angajatorului\n\nAngajatorul se obligă:\n\nsă asigure condiții corespunzătoare de muncă;\nsă achite salariul la termen;\nsă pună la dispoziția angajatului echipamentele necesare;\nsă respecte drepturile prevăzute de legislația muncii;\nsă asigure instruirea privind securitatea și sănătatea în muncă.\n\nArt. 8 – Demisia și încetarea contractului\n\nAngajatul poate demisiona prin notificare scrisă, cu respectarea termenului de preaviz prevăzut de lege sau de prezentul contract.\n\nAngajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectarea procedurilor legale.\n\nLa încetarea raporturilor de muncă, angajatul va preda toate bunurile, echipamentele, documentele și materialele aparținând societății.\n\nArt. 9 – Fișa postului\n\nAtribuții principale\n\nexecutarea lucrărilor specifice postului ocupat;\nmenținerea curățeniei la locul de muncă;\nutilizarea corectă a echipamentelor și sculelor;\nrespectarea procedurilor interne;\ncomunicarea cu superiorul direct privind desfășurarea activității;\nrespectarea normelor de protecția muncii și PSI.\n\nArt. 10 – Dispoziții finale\n\nPrezentul contract produce efecte începând cu data de ${dataStart}.\n\nOrice modificare se face numai prin act adițional, semnat de ambele părți.\n\nContractul este întocmit în două exemplare originale, câte unul pentru fiecare parte.\n\nANGAJATOR\n\nCompania: ${companie}\n\nReprezentant: ${manager}\n\nSemnătură: ${manager}\n\nANGAJAT\n\nNume: ${nume}\n\nSemnătură:`;
+        return `CONTRACT INDIVIDUAL DE MUNCĂ
+Nr. ${contractNo}
+
+Încheiat între:
+
+Angajator: ${companie}, cu sediul în Los Santos pe Innocence Boulevard, reprezentată legal de ${manager}, denumită în continuare Angajator,
+
+și
+
+Salariat:
+${nume}
+
+domiciliat(ă) în Los Santos,
+CNP: ${cnp},
+Telefon: ${telefon},
+denumit(ă) în continuare Angajat.
+
+Art. 1 – Obiectul contractului
+
+Angajatul este încadrat în funcția de ${functie} în cadrul activității de service auto și/sau spălătorie auto, conform fișei postului anexate la prezentul contract.
+
+Art. 2 – Durata contractului
+
+Contractul se încheie pe perioadă: Perioada Nedeterminata
+
+Data începerii activității este ${dataStart}.
+
+Art. 3 – Locul muncii
+
+Activitatea se va desfășura la punctul de lucru al ${companie} situat în Los Santos pe Innocence Boulevard, precum și în alte locații ale societății, dacă este necesar.
+
+Art. 4 – Programul de lucru
+
+Programul normal de lucru este de 3 ore/zi, între ora ${program}, conform programului stabilit de angajator si Primaria Orasului Los Santos.
+
+Art. 5 – Salarizarea
+
+Salariul de bază net: ${salariu}.
+Plata salariului se efectuează săptămânal in fiecare Duminica.
+Angajatul poate beneficia de bonusuri sau prime de performanță, conform politicii societății.
+Orele suplimentare se efectuează numai cu aprobarea angajatorului și nu sunt remunerate prin salariul de bază. Compensarea acestora se realizează exclusiv din sumele încasate cu titlu de bacșiș („ciubuc”) sau din veniturile obținute în urma lucrărilor efectuate în intervalul respectiv, conform înțelegerii dintre părți.
+
+Art. 6 – Obligațiile angajatului
+
+Angajatul se obligă:
+
+să respecte programul de lucru;
+să execute atribuțiile prevăzute în fișa postului;
+să utilizeze corespunzător echipamentele și uneltele societății;
+să respecte normele de securitate și sănătate în muncă;
+să păstreze confidențialitatea informațiilor privind activitatea societății și a clienților;
+să manifeste un comportament profesionist față de clienți și colegi;
+să informeze imediat angajatorul despre orice incident sau defecțiune constatată.
+
+Art. 7 – Obligațiile angajatorului
+
+Angajatorul se obligă:
+
+să asigure condiții corespunzătoare de muncă;
+să achite salariul la termen;
+să pună la dispoziția angajatului echipamentele necesare;
+să respecte drepturile prevăzute de legislația muncii;
+să asigure instruirea privind securitatea și sănătatea în muncă.
+
+Art. 8 – Demisia și încetarea contractului
+
+Angajatul poate demisiona prin notificare scrisă, cu respectarea termenului de preaviz prevăzut de lege sau de prezentul contract.
+
+Angajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectarea procedurilor legale.
+
+La încetarea raporturilor de muncă, angajatul va preda toate bunurile, echipamentele, documentele și materialele aparținând societății.
+
+Art. 9 – Fișa postului
+
+Atribuții principale
+
+executarea lucrărilor specifice postului ocupat;
+menținerea curățeniei la locul de muncă;
+utilizarea corectă a echipamentelor și sculelor;
+respectarea procedurilor interne;
+comunicarea cu superiorul direct privind desfășurarea activității;
+respectarea normelor de protecția muncii și PSI.
+
+Art. 10 – Dispoziții finale
+
+Prezentul contract produce efecte începând cu data de ${dataStart}.
+
+Orice modificare se face numai prin act adițional, semnat de ambele părți.
+
+Contractul este întocmit în două exemplare originale, câte unul pentru fiecare parte.
+
+ANGAJATOR
+
+Compania: ${companie}
+
+Reprezentant: ${manager}
+
+Semnătură: ${manager}
+
+ANGAJAT
+
+Nume: ${nume}
+
+Semnătură:`;
     };
 
     if (btnGenereaza) {
@@ -1779,29 +1913,19 @@ function initRapoarteModuleLogic() {
 
             const period = filterPeriod ? filterPeriod.value : 'all';
             const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-
             const now = new Date();
-            const todayStr = now.toLocaleDateString();
 
             const filteredShifts = shifts.filter(s => {
-                // Filtrare după perioadă
                 if (period === 'today') {
-                    if (s.date !== todayStr) return false;
+                    const shiftDate = new Date(s.date);
+                    if (shiftDate.toDateString() !== now.toDateString()) return false;
                 } else if (period === 'week') {
-                    // Verificare suplimentară sigură pentru ultimele 7 zile
-                    try {
-                        const parts = s.date.split('.');
-                        if (parts.length === 3) {
-                            const shiftDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                            const diffDays = (now - shiftDate) / (1000 * 60 * 60 * 24);
-                            if (diffDays < 0 || diffDays > 7) return false;
-                        }
-                    } catch (e) {
-                        // Ignoră eroarea de format și păstrează înregistrarea
-                    }
+                    const shiftDate = new Date(s.date);
+                    const weekAgo = new Date();
+                    weekAgo.setDate(now.getDate() - 7);
+                    if (shiftDate < weekAgo) return false;
                 }
 
-                // Filtrare după mecanic
                 if (searchTerm) {
                     const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
                     if (!mName.includes(searchTerm)) return false;
@@ -1810,54 +1934,43 @@ function initRapoarteModuleLogic() {
                 return true;
             });
 
-            if (filteredShifts.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio tură găsită pentru filtrele aplicate.</td></tr>`;
-                if (repTotalHours) repTotalHours.textContent = "00:00:00";
-                if (repTotalShifts) repTotalShifts.textContent = "0";
-                if (repTotalUsers) repTotalUsers.textContent = "0";
-                if (repAvgShift) repAvgShift.textContent = "00:00:00";
-                return;
-            }
-
             let totalMs = 0;
-            const activeUsers = new Set();
+            const activeUsersSet = new Set();
             const userStats = {};
 
             filteredShifts.forEach(s => {
                 const ms = s.duration_ms || 0;
                 totalMs += ms;
-                activeUsers.add(s.discord_id);
+                activeUsersSet.add(s.discord_id);
 
                 if (!userStats[s.discord_id]) {
-                    userStats[s.discord_id] = {
-                        name: userMap[s.discord_id] || 'Mecanic',
-                        shifts: 0,
-                        ms: 0
-                    };
+                    userStats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', shifts: 0, ms: 0 };
                 }
                 userStats[s.discord_id].shifts += 1;
                 userStats[s.discord_id].ms += ms;
             });
 
             const totalShiftsCount = filteredShifts.length;
-            const avgShiftMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
+            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
 
             if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
             if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
-            if (repTotalUsers) repTotalUsers.textContent = activeUsers.size;
-            if (repAvgShift) repAvgShift.textContent = formatDuration(avgShiftMs);
+            if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
+            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
 
             const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
+
+            if (sortedTeam.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
+                return;
+            }
 
             tableBody.innerHTML = sortedTeam.map((item, index) => {
                 const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
                 return `
                     <tr class="hover:bg-slate-800/30 transition">
-                        <td class="py-3 text-slate-200 font-medium flex items-center space-x-2">
-                            <span>${medal}</span>
-                            <span>${item.name}</span>
-                        </td>
-                        <td class="py-3 text-center text-indigo-400 font-medium">${item.shifts}</td>
+                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
+                        <td class="py-3 text-center text-indigo-400 font-semibold">${item.shifts}</td>
                         <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.ms)}</td>
                     </tr>
                 `;
@@ -1865,17 +1978,26 @@ function initRapoarteModuleLogic() {
 
         } catch (err) {
             console.error("Eroare la încărcarea rapoartelor:", err);
-            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">A apărut o eroare neașteptată.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea rapoartelor din baza de date.</td></tr>`;
         }
     };
 
-    if (btnRefresh) {
-        btnRefresh.addEventListener('click', loadReportData);
-    }
-
-    if (btnApplyFilters) {
-        btnApplyFilters.addEventListener('click', loadReportData);
+    if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
+    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') loadReportData();
+        });
     }
 
     loadReportData();
+}
+
+function formatDuration(ms) {
+    if (isNaN(ms) || ms < 0) return "00:00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
 }
