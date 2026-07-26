@@ -26,13 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (btnMasaCrafting) {
         const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
-        // Preluăm rolul permis direct din atributul elementului (ex: "Mecanic")
         const allowedRole = (btnMasaCrafting.getAttribute('data-role') || '').toLowerCase();
 
         if (userRole === allowedRole || userRole === "admin") {
             btnMasaCrafting.classList.remove('hidden');
-            // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
-            // sau o poți muta aici pentru consistență:
             btnMasaCrafting.addEventListener('click', () => {
                 window.open("https://lttlmario.github.io/masa-crafting/", "_blank");
             });
@@ -46,13 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (btnLocatiiIlegale) {
         const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
-        // Preluăm rolul permis direct din atributul elementului (ex: "Familia")
         const allowedRole = (btnLocatiiIlegale.getAttribute('data-role') || '').toLowerCase();
 
         if (userRole === allowedRole || userRole === "admin") {
             btnLocatiiIlegale.classList.remove('hidden');
-            // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
-            // sau o poți muta aici pentru consistență:
             btnLocatiiIlegale.addEventListener('click', () => {
                 window.open("https://lttlmario.github.io/hatra-ilegale-bzone/", "_blank");
             });
@@ -1969,48 +1963,24 @@ function initRapoarteModuleLogic() {
                 const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
                 return `
                     <tr class="hover:bg-slate-800/30 transition">
-                        <td class="py-3 text-slate-200 font-medium flex items-center space-x-2">
-                            <span>${medal}</span>
-                            <span>${item.name}</span>
-                        </td>
-                        <td class="py-3 text-indigo-400 text-center font-medium">${item.shifts} tură(e)</td>
-                        <td class="py-3 font-mono text-emerald-400 text-right font-bold">${formatDuration(item.ms)}</td>
+                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
+                        <td class="py-3 text-center text-indigo-400 font-semibold">${item.shifts}</td>
+                        <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.ms)}</td>
                     </tr>
                 `;
             }).join('');
+
         } catch (err) {
-            console.error("Eroare încărcare rapoarte:", err);
-            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare de conexiune la încărcarea rapoartelor.</td></tr>`;
+            console.error("Eroare la încărcarea rapoartelor:", err);
+            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea rapoartelor din baza de date.</td></tr>`;
         }
     };
 
     if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
     if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
-
-    const btnExportReports = document.getElementById('btn-export-reports');
-    if (btnExportReports) {
-        btnExportReports.addEventListener('click', async () => {
-            try {
-                const { data: shifts } = await supabaseClient.from('shifts').select('*');
-                if (!shifts || shifts.length === 0) {
-                    alert("Nu există date de exportat!");
-                    return;
-                }
-                let csvContent = "data:text/csv;charset=utf-8,ID Discord,Data,Start,Stop,Tip Tura,Durata (MS)\n";
-                shifts.forEach(s => {
-                    csvContent += `"${s.discord_id}","${s.date}","${s.start_time}","${s.end_time}","${s.shift_type || ''}",${s.duration_ms}\n`;
-                });
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `raport_pontaj_${new Date().toISOString().split('T')[0]}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } catch (e) {
-                console.error("Eroare export CSV:", e);
-                alert("Eroare la generarea fișierului CSV.");
-            }
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') loadReportData();
         });
     }
 
@@ -2019,9 +1989,9 @@ function initRapoarteModuleLogic() {
 
 function formatDuration(ms) {
     if (!ms || ms < 0) return "00:00:00";
-    const totalSecs = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSecs / 3600);
-    const mins = Math.floor((totalSecs % 3600) / 60);
-    const secs = totalSecs % 60;
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
