@@ -22,7 +22,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
 document.addEventListener("DOMContentLoaded", () => {
-const btnMasaCrafting = document.getElementById("btn-locatii-ilegale");
+const btnMasaCrafting = document.getElementById("btn-masa-crafting");
                 
 if (btnMasaCrafting) {
     const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
