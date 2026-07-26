@@ -1,1 +1,163 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workforce Management System - Auth & Core</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased h-screen overflow-hidden flex flex-col">
 
+    <!-- 1. ECRANUL DE LOGIN (Discord OAuth Web & Desktop Integration) -->
+    <div id="login-screen" class="fixed inset-0 bg-slate-950 flex items-center justify-center z-50">
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6">
+            <div class="w-16 h-16 bg-indigo-600/20 border border-indigo-500/30 rounded-2xl mx-auto flex items-center justify-center">
+                <svg class="w-8 h-8 text-indigo-400" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.927 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-slate-100">Workforce Management</h1>
+                <p class="text-sm text-slate-400 mt-1">Autentificare securizată prin Discord</p>
+            </div>
+            
+            <a id="discord-login-btn" href="#" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/20">
+                <span>Conectare cu Discord</span>
+            </a>
+
+            <p class="text-xs text-slate-500">După acord, vei fi redirecționat automat în panou.</p>
+        </div>
+    </div>
+
+    <!-- 2. APLICAȚIA PRINCIPALĂ -->
+    <div id="app-container" class="flex h-screen overflow-hidden hidden w-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+                <span class="font-bold text-lg text-emerald-400">Workforce System</span>
+            </div>
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <a href="#" data-section="Dashboard" class="nav-link block px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 font-medium">Dashboard</a>
+                <a href="#" data-section="Pontaj" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Pontaj</a>
+                <a href="#" data-section="Cereri" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Cereri</a>
+                <a href="#" data-section="Contracte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Contracte & Documente</a>
+                <a href="#" data-section="Rapoarte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Rapoarte</a>
+                <a href="#" data-section="Admin" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Setări Admin</a>
+            </nav>
+            <div class="p-4 border-t border-slate-800 flex items-center justify-center">
+                <button id="logout-btn" class="w-full text-xs bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 py-2 rounded-lg transition">Ieșire din cont</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col overflow-y-auto bg-slate-950">
+            <!-- Header cu profilul în dreapta sus -->
+            <header class="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur flex items-center justify-between px-6">
+                <h1 id="page-title" class="text-xl font-semibold text-slate-200">Dashboard</h1>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full font-medium hidden sm:block">
+                        Sistem Activ • Realtime
+                    </div>
+
+                    <!-- Profil utilizator (Avatar + Nume + Funcție) în dreapta sus -->
+                    <div class="flex items-center space-x-3 pl-4 border-l border-slate-800">
+                        <img id="user-avatar" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png" alt="Avatar" class="w-9 h-9 rounded-full bg-slate-800 object-cover border border-slate-700">
+                        <div class="text-left">
+                            <p id="user-display-name" class="text-sm font-medium text-slate-200 leading-tight">Mario</p>
+                            <p id="user-role" class="text-xs text-emerald-400">Mecanic</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div id="main-content-area" class="p-6 space-y-6">
+                <!-- Zona dedicată pentru input manual ore pontaj și ieșire automată (Zi / Noapte) -->
+                <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 max-w-xl">
+                    <h2 class="text-lg font-bold text-slate-100">Configurare Pontaj & Durată Maximă</h2>
+
+                    <!-- Căsuță nouă pentru schimbarea manuală a orelor de la pontaj -->
+                    <div class="space-y-2">
+                        <label for="manual-ore-input" class="block text-sm font-medium text-slate-300">
+                            Modifică manual orele de la pontaj:
+                        </label>
+                        <input 
+                            type="text" 
+                            id="manual-ore-input" 
+                            placeholder="Introduceți orele (ex: 08:00 sau număr ore)" 
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                        >
+                    </div>
+
+                    <!-- Afișarea automată a orei de ieșire -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <!-- Tura de Zi -->
+                        <div class="bg-slate-950/50 border border-slate-800/80 p-4 rounded-xl space-y-1">
+                            <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Tura de Zi</span>
+                            <p class="text-sm text-slate-400">Ora de ieșire (automată 19:59):</p>
+                            <div id="iesire-zi-auto" class="text-xl font-bold text-slate-100">19:59</div>
+                        </div>
+
+                        <!-- Tura de Noapte -->
+                        <div class="bg-slate-950/50 border border-slate-800/80 p-4 rounded-xl space-y-1">
+                            <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Tura de Noapte</span>
+                            <p class="text-sm text-slate-400">Ora de ieșire (automată 23:00):</p>
+                            <div id="iesire-noapte-auto" class="text-xl font-bold text-slate-100">23:00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panou Setări Admin - Ieșire Automată din Tură -->
+                <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 max-w-xl">
+                    <h2 class="text-lg font-bold text-slate-100">Setări Admin - Ieșire Automată din Tură</h2>
+                    <form id="admin-auto-checkout-form" class="space-y-4">
+                        <div class="space-y-2">
+                            <label for="admin-night-shift-end" class="block text-sm font-medium text-slate-300">
+                                Ora ieșire automată Tura de Noapte:
+                            </label>
+                            <input 
+                                type="time" 
+                                id="admin-night-shift-end" 
+                                value="23:00" 
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500 transition"
+                            >
+                        </div>
+
+                        <div class="space-y-2">
+                            <label for="admin-day-shift-end" class="block text-sm font-medium text-slate-300">
+                                Ora ieșire automată Tura de Zi:
+                            </label>
+                            <input 
+                                type="time" 
+                                id="admin-day-shift-end" 
+                                value="19:59" 
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition"
+                            >
+                        </div>
+
+                        <button type="button" id="save-admin-settings-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-4 rounded-xl transition shadow-lg shadow-emerald-600/20">
+                            Salvează Setările Admin
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script pentru logica de rutare a butoanelor de pontaj (Corectat) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const clientId = "1530859145459138601";
+            const redirectUri = encodeURIComponent(window.location.href.split('#')[0]);
+            
+            const discordWebOAuth = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify+email`;
+            
+            const btn = document.getElementById('discord-login-btn');
+            if (btn) {
+                btn.href = discordWebOAuth;
+            }
+        });
+    </script>
+    <script src="js/app.js"></script>
+</body>
+</html>
