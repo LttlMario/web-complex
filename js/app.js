@@ -1584,6 +1584,41 @@ function initAdvancedPontajLogic() {
 
     if (btnStart) {
         btnStart.addEventListener('click', async () => {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const totalMinutes = currentHour * 60 + currentMinute;
+
+            // Validare ore stricte pentru Tura de Noapte (20:00 - 23:00 -> 1200 - 1380 minute)
+            if (selectedShiftType.includes('Noapte')) {
+                const startNightMin = 20 * 60; // 1200 (20:00)
+                const endNightMin = 23 * 60;   // 1380 (23:00)
+                if (totalMinutes < startNightMin || totalMinutes > endNightMin) {
+                    if (validationAlert) {
+                        validationAlert.textContent = "Eroare: Tura de Noapte poate fi pornită exclusiv în intervalul orar 20:00 - 23:00!";
+                        validationAlert.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+
+            // Validare ore stricte pentru Tura de Zi (23:01 - 19:59)
+            if (selectedShiftType.includes('Zi')) {
+                const startDayMin = 23 * 60 + 1; // 1381 (23:01)
+                const endDayMin = 19 * 60 + 59;  // 1199 (19:59)
+                // Este valabil între 23:01 și 23:59 sau între 00:00 și 19:59
+                const isDuringDay = (totalMinutes >= startDayMin && totalMinutes <= 1439) || (totalMinutes >= 0 && totalMinutes <= endDayMin);
+                if (!isDuringDay) {
+                    if (validationAlert) {
+                        validationAlert.textContent = "Eroare: Tura de Zi poate fi pornită exclusiv în intervalul orar 23:01 - 19:59!";
+                        validationAlert.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+
+            if (validationAlert) validationAlert.classList.add('hidden');
+
             const timestamp = Date.now();
             shiftState = {
                 status: 'active',
@@ -1953,115 +1988,4 @@ function initRapoarteModuleLogic() {
     const btnApplyFilters = document.getElementById('btn-apply-filters');
     const filterPeriod = document.getElementById('rep-filter-period');
     const searchInput = document.getElementById('rep-search-input');
-
-    if (btnManualReport) {
-        btnManualReport.addEventListener('click', () => {
-            generateAndSendWeeklyReport(true);
-        });
-    }
-
-    const loadReportData = async () => {
-        if (!tableBody) return;
-        tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Se încarcă rapoartele din baza de date...</td></tr>`;
-
-        try {
-            const { data: shifts, error: shiftsError } = await supabaseClient.from('shifts').select('*');
-            const { data: users, error: usersError } = await supabaseClient.from('users').select('*');
-
-            if (shiftsError || usersError) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la citirea datelor din Supabase.</td></tr>`;
-                return;
-            }
-
-            if (!shifts || shifts.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio tură înregistrată în baza de date.</td></tr>`;
-                if (repTotalHours) repTotalHours.textContent = "00:00:00";
-                if (repTotalShifts) repTotalShifts.textContent = "0";
-                if (repTotalUsers) repTotalUsers.textContent = "0";
-                if (repAvgShift) repAvgShift.textContent = "00:00:00";
-                return;
-            }
-
-            const userMap = {};
-            if (users) {
-                users.forEach(u => {
-                    userMap[u.discord_id] = u.display_name || u.username;
-                });
-            }
-
-            const period = filterPeriod ? filterPeriod.value : 'all';
-            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            const now = new Date();
-
-            const filteredShifts = shifts.filter(s => {
-                if (period === 'today') {
-                    const shiftDate = new Date(s.date);
-                    if (shiftDate.toDateString() !== now.toDateString()) return false;
-                } else if (period === 'week') {
-                    const shiftDate = new Date(s.date);
-                    const weekAgo = new Date();
-                    weekAgo.setDate(now.getDate() - 7);
-                    if (shiftDate < weekAgo) return false;
-                }
-
-                if (searchTerm) {
-                    const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
-                    if (!mName.includes(searchTerm)) return false;
-                }
-
-                return true;
-            });
-
-            let totalMs = 0;
-            const activeUsersSet = new Set();
-            const userStats = {};
-
-            filteredShifts.forEach(s => {
-                const ms = s.duration_ms || 0;
-                totalMs += ms;
-                activeUsersSet.add(s.discord_id);
-
-                if (!userStats[s.discord_id]) {
-                    userStats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', shifts: 0, ms: 0 };
-                }
-                userStats[s.discord_id].shifts += 1;
-                userStats[s.discord_id].ms += ms;
-            });
-
-            const totalShiftsCount = filteredShifts.length;
-            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
-
-            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
-            if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
-            if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
-            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
-
-            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
-
-            if (sortedTeam.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
-                return;
-            }
-
-            tableBody.innerHTML = sortedTeam.map((item, index) => {
-                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
-                return `
-                    <tr class="hover:bg-slate-800/30 transition">
-                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
-                        <td class="py-3 text-indigo-400 text-center">${item.shifts}</td>
-                        <td class="py-3 text-emerald-400 font-mono font-medium text-right">${formatDuration(item.ms)}</td>
-                    </tr>
-                `;
-            }).join('');
-        } catch (err) {
-            console.error("Eroare la încărcarea rapoartelor:", err);
-            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea datelor.</td></tr>`;
-        }
-    };
-
-    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
-    if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
-    if (searchInput) searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') loadReportData(); });
-
-    loadReportData();
 }
