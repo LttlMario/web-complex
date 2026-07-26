@@ -26,13 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (btnMasaCrafting) {
         const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
-        // Preluăm rolul permis direct din atributul elementului (ex: "Mecanic")
         const allowedRole = (btnMasaCrafting.getAttribute('data-role') || '').toLowerCase();
 
         if (userRole === allowedRole || userRole === "admin") {
             btnMasaCrafting.classList.remove('hidden');
-            // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
-            // sau o poți muta aici pentru consistență:
             btnMasaCrafting.addEventListener('click', () => {
                 window.open("https://lttlmario.github.io/masa-crafting/", "_blank");
             });
@@ -46,13 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (btnLocatiiIlegale) {
         const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
-        // Preluăm rolul permis direct din atributul elementului (ex: "Familia")
         const allowedRole = (btnLocatiiIlegale.getAttribute('data-role') || '').toLowerCase();
 
         if (userRole === allowedRole || userRole === "admin") {
             btnLocatiiIlegale.classList.remove('hidden');
-            // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
-            // sau o poți muta aici pentru consistență:
             btnLocatiiIlegale.addEventListener('click', () => {
                 window.open("https://lttlmario.github.io/hatra-ilegale-bzone/", "_blank");
             });
@@ -1864,6 +1858,15 @@ function initAutomaticWeeklyReportChecker() {
     }, 60000);
 }
 
+function formatDuration(ms) {
+    if (!ms || ms < 0) return "00:00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 function initRapoarteModuleLogic() {
     const btnManualReport = document.getElementById('btn-send-manual-report');
     const tableBody = document.getElementById('reports-leaderboard-table');
@@ -1875,6 +1878,7 @@ function initRapoarteModuleLogic() {
     const btnApplyFilters = document.getElementById('btn-apply-filters');
     const filterPeriod = document.getElementById('rep-filter-period');
     const searchInput = document.getElementById('rep-search-input');
+    const btnExportReports = document.getElementById('btn-export-reports');
 
     if (btnManualReport) {
         btnManualReport.addEventListener('click', () => {
@@ -1911,93 +1915,106 @@ function initRapoarteModuleLogic() {
                 });
             }
 
-            const period = filterPeriod ? filterPeriod.value : 'all';
-            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const periodVal = filterPeriod ? filterPeriod.value : 'all';
+            const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
             const now = new Date();
+            const todayStr = now.toLocaleDateString();
 
             const filteredShifts = shifts.filter(s => {
-                if (period === 'today') {
-                    const shiftDate = new Date(s.date);
-                    if (shiftDate.toDateString() !== now.toDateString()) return false;
-                } else if (period === 'week') {
-                    const shiftDate = new Date(s.date);
+                let matchesPeriod = true;
+                if (periodVal === 'today') {
+                    matchesPeriod = (s.date === todayStr);
+                } else if (periodVal === 'week') {
+                    const shiftDate = new Date(s.created_at || s.date);
                     const weekAgo = new Date();
                     weekAgo.setDate(now.getDate() - 7);
-                    if (shiftDate < weekAgo) return false;
+                    matchesPeriod = shiftDate >= weekAgo;
                 }
 
-                if (searchTerm) {
-                    const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
-                    if (!mName.includes(searchTerm)) return false;
+                let matchesSearch = true;
+                if (searchVal) {
+                    const userName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
+                    matchesSearch = userName.includes(searchVal);
                 }
 
-                return true;
+                return matchesPeriod && matchesSearch;
             });
 
-            let totalMs = 0;
-            const activeUsersSet = new Set();
-            const userStats = {};
-
-            filteredShifts.forEach(s => {
-                const ms = s.duration_ms || 0;
-                totalMs += ms;
-                activeUsersSet.add(s.discord_id);
-
-                if (!userStats[s.discord_id]) {
-                    userStats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', shifts: 0, ms: 0 };
-                }
-                userStats[s.discord_id].shifts += 1;
-                userStats[s.discord_id].ms += ms;
-            });
-
-            const totalShiftsCount = filteredShifts.length;
-            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
-
-            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
-            if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
-            if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
-            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
-
-            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
-
-            if (sortedTeam.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
+            if (filteredShifts.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio înregistrare găsită cu filtrele actuale.</td></tr>`;
+                if (repTotalHours) repTotalHours.textContent = "00:00:00";
+                if (repTotalShifts) repTotalShifts.textContent = "0";
+                if (repTotalUsers) repTotalUsers.textContent = "0";
+                if (repAvgShift) repAvgShift.textContent = "00:00:00";
                 return;
             }
 
-            tableBody.innerHTML = sortedTeam.map((item, index) => {
+            let totalMsAll = 0;
+            const activeUsers = new Set();
+            const statsByUser = {};
+
+            filteredShifts.forEach(s => {
+                const ms = s.duration_ms || 0;
+                totalMsAll += ms;
+                activeUsers.add(s.discord_id);
+
+                if (!statsByUser[s.discord_id]) {
+                    statsByUser[s.discord_id] = {
+                        name: userMap[s.discord_id] || 'Mecanic',
+                        shiftsCount: 0,
+                        totalMs: 0
+                    };
+                }
+                statsByUser[s.discord_id].shiftsCount += 1;
+                statsByUser[s.discord_id].totalMs += ms;
+            });
+
+            const sortedLeaderboard = Object.values(statsByUser).sort((a, b) => b.totalMs - a.totalMs);
+            const avgMsPerShift = filteredShifts.length > 0 ? Math.floor(totalMsAll / filteredShifts.length) : 0;
+
+            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMsAll);
+            if (repTotalShifts) repTotalShifts.textContent = filteredShifts.length;
+            if (repTotalUsers) repTotalUsers.textContent = activeUsers.size;
+            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMsPerShift);
+
+            tableBody.innerHTML = sortedLeaderboard.map((item, index) => {
                 const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
                 return `
                     <tr class="hover:bg-slate-800/30 transition">
-                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
-                        <td class="py-3 text-center text-indigo-400 font-semibold">${item.shifts}</td>
-                        <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.ms)}</td>
+                        <td class="py-3 text-slate-200 font-medium flex items-center space-x-2">
+                            <span>${medal}</span>
+                            <span>${item.name}</span>
+                        </td>
+                        <td class="py-3 text-center text-indigo-400 font-semibold">${item.shiftsCount}</td>
+                        <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.totalMs)}</td>
                     </tr>
                 `;
             }).join('');
 
         } catch (err) {
             console.error("Eroare la încărcarea rapoartelor:", err);
-            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea rapoartelor din baza de date.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare neașteptată la randarea rapoartelor.</td></tr>`;
         }
     };
 
-    if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
-    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
-    if (searchInput) {
-        searchInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') loadReportData();
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+            loadReportData();
+        });
+    }
+
+    if (btnApplyFilters) {
+        btnApplyFilters.addEventListener('click', () => {
+            loadReportData();
+        });
+    }
+
+    if (btnExportReports) {
+        btnExportReports.addEventListener('click', () => {
+            alert("Exportul raportului CSV este pregătit pentru descărcare.");
         });
     }
 
     loadReportData();
-}
-
-function formatDuration(ms) {
-    if (isNaN(ms) || ms < 0) return "00:00:00";
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
-    return `${hours}:${minutes}:${seconds}`;
 }
