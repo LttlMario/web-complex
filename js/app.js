@@ -19,18 +19,16 @@ const SUPABASE_URL = "https://vkvsabbbawyiurnaiugo.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdnNhYmJiYXd5aXVybmFpdWdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTA0Njk1NiwiZXhwIjoyMTAwNjIyOTU2fQ.1D67DT0lul6bgcRSmbr5-JEHZmErTNvCXB4Up1g3zWw";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 document.addEventListener("DOMContentLoaded", () => {
     const btnMarketplace = document.getElementById("btn-marketplace");
     
     // Verificăm dacă butonul există în pagină pentru a evita eroarea de null
     if (btnMarketplace) {
-        // Obținem rolul utilizatorului curent (setat pe "Mecanic" implicit dacă lipsește)
-        const user = JSON.parse(localStorage.getItem('workforce_user')) || {};
-        const userRole = (user.role || localStorage.getItem('userRole') || 'Mecanic').toLowerCase(); 
+        // Obținem rolul utilizatorului curent (adaptează cheia în funcție de cum salvezi tu rolul, ex: localStorage.getItem('userRole'))
+        const userRole = localStorage.getItem('userRole') || ''; 
 
-        // Verificăm dacă utilizatorul are rolul de "Mecanic" (sau admin)
-        if (userRole === "mecanic" || userRole === "admin") { 
+        // Verificăm dacă utilizatorul are rolul de "Mecanic" (sau dacă e setat să aibă acces)
+        if (userRole === "Mecanic" || userRole === "admin") { // poți adăuga și admin dacă vrei să aibă acces la tot
             btnMarketplace.classList.remove('hidden');
             
             // Acțiunea butonului: deschide link-ul extern într-o filă nouă
@@ -43,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 });
-
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Sistemul a pornit. Verificăm starea de autentificare...");
 
@@ -75,14 +72,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const section = link.getAttribute('data-section');
             const user = JSON.parse(localStorage.getItem('workforce_user')) || {};
-            const userRole = (user.role || 'mecanic').toLowerCase();
+            const userRole = (user.role || '').toLowerCase();
             const isAdmin = ADMIN_DISCORD_IDS.includes(user.discordId) || userRole === 'admin';
             const isManager = userRole === 'manager';
+            const isFamilia = userRole === 'familia';
             const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
             const isMecanic = userRole === 'mecanic' || !userRole;
 
-            // Restricționare acces conform ierarhiei:
+            // Restricționare acces conform ierarhiei (Familia vede tot ce vede un mecanic dar sub manager, deci nu vede Contracte, Rapoarte, Admin):
             if (isMecanic || isSefMecanic) {
+                if (section === 'Contracte' || section === 'Rapoarte' || section === 'Admin') {
+                    alert("Nu ai permisiunea de a accesa această secțiune!");
+                    return;
+                }
+            } else if (isFamilia) {
                 if (section === 'Contracte' || section === 'Rapoarte' || section === 'Admin') {
                     alert("Nu ai permisiunea de a accesa această secțiune!");
                     return;
@@ -160,9 +163,10 @@ function checkAuthStatus() {
 }
 
 function applyRoleAccessRestrictions(discordId, role) {
-    const userRole = (role || 'mecanic').toLowerCase();
+    const userRole = (role || '').toLowerCase();
     const isAdmin = ADMIN_DISCORD_IDS.includes(discordId) || userRole === 'admin';
     const isManager = userRole === 'manager';
+    const isFamilia = userRole === 'familia';
     const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
     const isMecanic = userRole === 'mecanic' || !userRole;
     
@@ -170,7 +174,7 @@ function applyRoleAccessRestrictions(discordId, role) {
     navLinks.forEach(link => {
         const section = link.getAttribute('data-section');
         
-        if (isMecanic || isSefMecanic) {
+        if (isMecanic || isSefMecanic || isFamilia) {
             if (section === 'Contracte' || section === 'Rapoarte' || section === 'Admin') {
                 link.style.display = 'none';
             }
@@ -303,14 +307,15 @@ async function saveUserToDatabase(userData) {
 }
 
 function renderSection(sectionName) {
-    const user = JSON.parse(localStorage.getItem('workforce_user')) || { role: 'Mecanic' };
-    const userRole = (user.role || 'mecanic').toLowerCase();
+    const user = JSON.parse(localStorage.getItem('workforce_user')) || {};
+    const userRole = (user.role || '').toLowerCase();
     const isAdmin = ADMIN_DISCORD_IDS.includes(user.discordId) || userRole === 'admin';
     const isManager = userRole === 'manager';
+    const isFamilia = userRole === 'familia';
     const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
     const isMecanic = userRole === 'mecanic' || !userRole;
 
-    if ((isMecanic || isSefMecanic) && (sectionName === 'Contracte' || sectionName === 'Admin' || sectionName === 'Rapoarte')) {
+    if ((isMecanic || isSefMecanic || isFamilia) && (sectionName === 'Contracte' || sectionName === 'Admin' || sectionName === 'Rapoarte')) {
         sectionName = 'Dashboard';
     } else if (isManager && sectionName === 'Admin') {
         sectionName = 'Dashboard';
@@ -683,6 +688,7 @@ function renderSection(sectionName) {
                             <select id="c-functie" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500 transition">
                                 <option value="Mecanic">Mecanic</option>
                                 <option value="Șef Mecanic">Șef Mecanic</option>
+                                <option value="Familia">Familia</option>
                                 <option value="Manager">Manager</option>
                                 <option value="Admin">Admin</option>
                             </select>
@@ -802,6 +808,7 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
                     </div>
                 </div>
 
+                <!-- Secțiune Nouă Setări Admin Dinamice Extinse (Sistem & Utilizatori) -->
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
                     <h3 class="text-xl font-bold text-slate-100 mb-2">Setări Avansate Administrator & Sistem</h3>
                     <p class="text-slate-400 text-sm mb-6">Configurări complete de sistem și politici pentru utilizatori salvate direct în baza de date.</p>
@@ -846,6 +853,7 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
                                 <select id="setting-default-role" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500">
                                     <option value="Mecanic">Mecanic</option>
                                     <option value="Șef Mecanic">Șef Mecanic</option>
+                                    <option value="Familia">Familia</option>
                                     <option value="Manager">Manager</option>
                                 </select>
                             </div>
@@ -889,6 +897,7 @@ async function initAdminLogic() {
                             <select onchange="updateUserRole('${u.discord_id}', this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded p-1 focus:outline-none focus:border-emerald-500">
                                 <option value="Mecanic" ${u.role === 'Mecanic' ? 'selected' : ''}>Mecanic</option>
                                 <option value="Șef Mecanic" ${u.role === 'Șef Mecanic' || u.role === 'Sef Mecanic' ? 'selected' : ''}>Șef Mecanic</option>
+                                <option value="Familia" ${u.role === 'Familia' ? 'selected' : ''}>Familia</option>
                                 <option value="Manager" ${u.role === 'Manager' ? 'selected' : ''}>Manager</option>
                                 <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
                             </select>
@@ -1746,23 +1755,175 @@ async function generateAndSendWeeklyReport(isManual = false) {
                     alertEl.textContent = "Raportul săptămânal a fost trimis cu succes pe Discord!";
                     alertEl.classList.remove('hidden');
                     setTimeout(() => alertEl.classList.add('hidden'), 4000);
+                } else {
+                    alert("Raportul săptămânal a fost trimis cu succes pe Discord!");
                 }
             }
+        } else if (isManual) {
+            alert("A apărut o eroare la trimiterea raportului.");
         }
     } catch (err) {
-        console.error("Eroare raport săptămânal:", err);
+        console.error("Eroare trimitere raport săptămânal:", err);
     }
 }
 
-function formatDuration(ms) {
-    if (!ms || ms < 0) return "00:00:00";
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+function initAutomaticWeeklyReportChecker() {
+    setInterval(() => {
+        const now = new Date();
+        const day = now.getDay(); // 0 = Duminică
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+
+        // Duminică (0) la ora 19:00 (19:00 - 19:01)
+        if (day === 0 && hours === 19 && minutes === 0) {
+            const lastSentKey = 'workforce_last_weekly_report_date';
+            const todayStr = now.toDateString();
+            const lastSent = localStorage.getItem(lastSentKey);
+
+            if (lastSent !== todayStr) {
+                localStorage.setItem(lastSentKey, todayStr);
+                generateAndSendWeeklyReport(false);
+            }
+        }
+    }, 60000); // Verificare la fiecare minut
 }
 
-function initAutomaticWeeklyReportChecker() {
-    // Funcție de schelet pentru verificarea automată a rapoartelor
+function initRapoarteModuleLogic() {
+    const btnManualReport = document.getElementById('btn-send-manual-report');
+    const tableBody = document.getElementById('reports-leaderboard-table');
+    const repTotalHours = document.getElementById('rep-total-hours');
+    const repTotalShifts = document.getElementById('rep-total-shifts');
+    const repTotalUsers = document.getElementById('rep-total-users');
+    const repAvgShift = document.getElementById('rep-avg-shift');
+    const btnRefresh = document.getElementById('btn-refresh-reports');
+    const btnApplyFilters = document.getElementById('btn-apply-filters');
+    const filterPeriod = document.getElementById('rep-filter-period');
+    const searchInput = document.getElementById('rep-search-input');
+
+    if (btnManualReport) {
+        btnManualReport.addEventListener('click', () => {
+            generateAndSendWeeklyReport(true);
+        });
+    }
+
+    const loadReportData = async () => {
+        if (!tableBody) return;
+        tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Se încarcă rapoartele din baza de date...</td></tr>`;
+
+        try {
+            const { data: shifts, error: shiftsError } = await supabaseClient.from('shifts').select('*');
+            const { data: users, error: usersError } = await supabaseClient.from('users').select('*');
+
+            if (shiftsError || usersError) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la citirea datelor din Supabase.</td></tr>`;
+                return;
+            }
+
+            if (!shifts || shifts.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio tură înregistrată în baza de date.</td></tr>`;
+                if (repTotalHours) repTotalHours.textContent = "00:00:00";
+                if (repTotalShifts) repTotalShifts.textContent = "0";
+                if (repTotalUsers) repTotalUsers.textContent = "0";
+                if (repAvgShift) repAvgShift.textContent = "00:00:00";
+                return;
+            }
+
+            const userMap = {};
+            if (users) {
+                users.forEach(u => {
+                    userMap[u.discord_id] = u.display_name || u.username;
+                });
+            }
+
+            const period = filterPeriod ? filterPeriod.value : 'all';
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const now = new Date();
+
+            const filteredShifts = shifts.filter(s => {
+                // Filtrare după perioadă
+                if (period === 'today') {
+                    const shiftDate = new Date(s.date);
+                    if (shiftDate.toDateString() !== now.toDateString()) return false;
+                } else if (period === 'week') {
+                    const shiftDate = new Date(s.date);
+                    const weekAgo = new Date();
+                    weekAgo.setDate(now.getDate() - 7);
+                    if (shiftDate < weekAgo) return false;
+                }
+
+                // Filtrare după nume mecanic
+                if (searchTerm) {
+                    const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
+                    if (!mName.includes(searchTerm)) return false;
+                }
+
+                return true;
+            });
+
+            let totalMs = 0;
+            const activeUsersSet = new Set();
+            const userStats = {};
+
+            filteredShifts.forEach(s => {
+                const ms = s.duration_ms || 0;
+                totalMs += ms;
+                activeUsersSet.add(s.discord_id);
+
+                if (!userStats[s.discord_id]) {
+                    userStats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', shifts: 0, ms: 0 };
+                }
+                userStats[s.discord_id].shifts += 1;
+                userStats[s.discord_id].ms += ms;
+            });
+
+            const totalShiftsCount = filteredShifts.length;
+            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
+
+            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
+            if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
+            if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
+            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
+
+            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
+
+            if (sortedTeam.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = sortedTeam.map((item, index) => {
+                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
+                return `
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
+                        <td class="py-3 text-center text-indigo-400 font-semibold">${item.shifts}</td>
+                        <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.ms)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+        } catch (err) {
+            console.error("Eroare la încărcarea rapoartelor:", err);
+            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea rapoartelor din baza de date.</td></tr>`;
+        }
+    };
+
+    if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
+    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') loadReportData();
+        });
+    }
+
+    loadReportData();
+}
+
+function formatDuration(ms) {
+    if (isNaN(ms) || ms < 0) return "00:00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
 }
