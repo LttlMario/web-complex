@@ -19,28 +19,34 @@ const SUPABASE_URL = "https://vkvsabbbawyiurnaiugo.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdnNhYmJiYXd5aXVybmFpdWdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTA0Njk1NiwiZXhwIjoyMTAwNjIyOTU2fQ.1D67DT0lul6bgcRSmbr5-JEHZmErTNvCXB4Up1g3zWw";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 document.addEventListener("DOMContentLoaded", () => {
     const btnMarketplace = document.getElementById("btn-marketplace");
+    const btnMarketplaceIlegal = document.getElementById("btn-marketplace-ilegal");
     
-    // Verificăm dacă butonul există în pagină pentru a evita eroarea de null
-    if (btnMarketplace) {
-        // Obținem rolul utilizatorului curent (adaptează cheia în funcție de cum salvezi tu rolul, ex: localStorage.getItem('userRole'))
-        const userRole = localStorage.getItem('userRole') || ''; 
+    if (btnMarketplace || btnMarketplaceIlegal) {
+        const userRole = (localStorage.getItem('userRole') || '').toLowerCase(); 
 
-        // Verificăm dacă utilizatorul are rolul de "Mecanic" (sau dacă e setat să aibă acces)
-        if (userRole === "Mecanic" || userRole === "admin") { // poți adăuga și admin dacă vrei să aibă acces la tot
-            btnMarketplace.classList.remove('hidden');
-            
-            // Acțiunea butonului: deschide link-ul extern într-o filă nouă
-            btnMarketplace.addEventListener('click', () => {
-                window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
-            });
+        if (userRole === "mecanic" || userRole === "admin" || userRole === "sef mecanic" || userRole === "șef mecanic") {
+            if (btnMarketplace) {
+                btnMarketplace.classList.remove('hidden');
+                btnMarketplace.addEventListener('click', () => {
+                    window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
+                });
+            }
+            if (btnMarketplaceIlegal) {
+                btnMarketplaceIlegal.classList.remove('hidden');
+                btnMarketplaceIlegal.addEventListener('click', () => {
+                    window.open("https://lttlmario.github.io/marketplace-ilegal/", "_blank");
+                });
+            }
         } else {
-            // Dacă nu are rolul necesar, ne asigurăm că rămâne ascuns
-            btnMarketplace.classList.add('hidden');
+            if (btnMarketplace) btnMarketplace.classList.add('hidden');
+            if (btnMarketplaceIlegal) btnMarketplaceIlegal.classList.add('hidden');
         }
     }
 });
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Sistemul a pornit. Verificăm starea de autentificare...");
 
@@ -79,7 +85,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
             const isMecanic = userRole === 'mecanic' || !userRole;
 
-            // Restricționare acces conform ierarhiei (Familia vede tot ce vede un mecanic dar sub manager, deci nu vede Contracte, Rapoarte, Admin):
             if (isMecanic || isSefMecanic) {
                 if (section === 'Contracte' || section === 'Rapoarte' || section === 'Admin') {
                     alert("Nu ai permisiunea de a accesa această secțiune!");
@@ -286,6 +291,8 @@ async function handleDiscordCallback() {
                 role: discordUser.role,
                 service: discordUser.service
             }));
+            
+            localStorage.setItem('userRole', discordUser.role);
 
             window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error) {
@@ -350,8 +357,10 @@ function renderSection(sectionName) {
                                 <span>Mergi la Pontaj</span>
                             </button>
                             <button id="btn-marketplace" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs py-2.5 px-5 rounded-xl transition shadow-md flex items-center space-x-2 cursor-pointer">
-                                <span>🛒</span>
                                 <span>Marketplace Legal</span>
+                            </button>
+                            <button id="btn-marketplace-ilegal" class="hidden bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs py-2.5 px-5 rounded-xl transition shadow-md flex items-center space-x-2 cursor-pointer">
+                                <span>Marketplace Ilegal</span>
                             </button>
                         </div>
                     </div>
@@ -383,18 +392,26 @@ function renderSection(sectionName) {
             </div>
         `;
 
-        // Activare imediată a logicii pentru butonul marketplace injectat în Dashboard
         const btnMarketplace = document.getElementById("btn-marketplace");
-        if (btnMarketplace) {
-            const userRole = (user.role || '').toLowerCase();
-            if (userRole === "mecanic" || userRole === "admin" || userRole === "sef mecanic" || userRole === "șef mecanic") {
+        const btnMarketplaceIlegal = document.getElementById("btn-marketplace-ilegal");
+        const currentRole = (user.role || '').toLowerCase();
+
+        if (currentRole === "mecanic" || currentRole === "admin" || currentRole === "sef mecanic" || currentRole === "șef mecanic") {
+            if (btnMarketplace) {
                 btnMarketplace.classList.remove('hidden');
                 btnMarketplace.addEventListener('click', () => {
                     window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
                 });
-            } else {
-                btnMarketplace.classList.add('hidden');
             }
+            if (btnMarketplaceIlegal) {
+                btnMarketplaceIlegal.classList.remove('hidden');
+                btnMarketplaceIlegal.addEventListener('click', () => {
+                    window.open("https://lttlmario.github.io/marketplace-ilegal/", "_blank");
+                });
+            }
+        } else {
+            if (btnMarketplace) btnMarketplace.classList.add('hidden');
+            if (btnMarketplaceIlegal) btnMarketplaceIlegal.classList.add('hidden');
         }
 
     } else if (sectionName === 'Pontaj') {
@@ -827,7 +844,6 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
                     </div>
                 </div>
 
-                <!-- Secțiune Nouă Setări Admin Dinamice Extinse (Sistem & Utilizatori) -->
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
                     <h3 class="text-xl font-bold text-slate-100 mb-2">Setări Avansate Administrator & Sistem</h3>
                     <p class="text-slate-400 text-sm mb-6">Configurări complete de sistem și politici pentru utilizatori salvate direct în baza de date.</p>
@@ -1009,6 +1025,7 @@ async function updateUserRole(discordId, newRole) {
             console.error(error);
         } else {
             alert(`Rolul a fost actualizat cu succes la: ${newRole}`);
+            localStorage.setItem('userRole', newRole);
         }
     } catch (err) {
         console.error("Eroare actualizare rol:", err);
@@ -1789,11 +1806,10 @@ async function generateAndSendWeeklyReport(isManual = false) {
 function initAutomaticWeeklyReportChecker() {
     setInterval(() => {
         const now = new Date();
-        const day = now.getDay(); // 0 = Duminică
+        const day = now.getDay(); 
         const hours = now.getHours();
         const minutes = now.getMinutes();
 
-        // Duminică (0) la ora 19:00 (19:00 - 19:01)
         if (day === 0 && hours === 19 && minutes === 0) {
             const lastSentKey = 'workforce_last_weekly_report_date';
             const todayStr = now.toDateString();
@@ -1804,7 +1820,7 @@ function initAutomaticWeeklyReportChecker() {
                 generateAndSendWeeklyReport(false);
             }
         }
-    }, 60000); // Verificare la fiecare minut
+    }, 60000);
 }
 
 function initRapoarteModuleLogic() {
@@ -1859,7 +1875,6 @@ function initRapoarteModuleLogic() {
             const now = new Date();
 
             const filteredShifts = shifts.filter(s => {
-                // Filtrare după perioadă
                 if (period === 'today') {
                     const shiftDate = new Date(s.date);
                     if (shiftDate.toDateString() !== now.toDateString()) return false;
@@ -1870,7 +1885,6 @@ function initRapoarteModuleLogic() {
                     if (shiftDate < weekAgo) return false;
                 }
 
-                // Filtrare după nume mecanic
                 if (searchTerm) {
                     const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
                     if (!mName.includes(searchTerm)) return false;
@@ -1906,7 +1920,7 @@ function initRapoarteModuleLogic() {
             const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
 
             if (sortedTeam.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
                 return;
             }
 
@@ -1946,4 +1960,3 @@ function formatDuration(ms) {
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
 }
-```[cite: 8]
