@@ -43,10 +43,6 @@
                 <a href="#" data-section="Contracte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Contracte & Documente</a>
                 <a href="#" data-section="Rapoarte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Rapoarte</a>
                 <a href="#" data-section="Admin" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Setări Admin</a>
-                <!-- Noul buton de Marketplace (vizibil sau controlat prin JS) -->
-                <button id="btn-marketplace" data-role="Mecanic" class="hidden flex items-center gap-2 ...">
-                    <span>Marketplace</span>
-                </button>
                 <a href="https://lttlmario.github.io/marketplace-legal/" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="nav-link flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition font-medium">
                 <span>Market Intern</span>
                 </a>
@@ -58,7 +54,6 @@
 
         <!-- Main Content Area -->
         <main class="flex-1 flex flex-col overflow-y-auto bg-slate-950">
-            <!-- Header cu profilul în dreapta sus -->
             <header class="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur flex items-center justify-between px-6">
                 <h1 id="page-title" class="text-xl font-semibold text-slate-200">Dashboard</h1>
                 
@@ -67,7 +62,6 @@
                         Sistem Activ • Realtime
                     </div>
 
-                    <!-- Profil utilizator (Avatar + Nume + Funcție) în dreapta sus -->
                     <div class="flex items-center space-x-3 pl-4 border-l border-slate-800">
                         <img id="user-avatar" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png" alt="Avatar" class="w-9 h-9 rounded-full bg-slate-800 object-cover border border-slate-700">
                         <div class="text-left">
@@ -79,33 +73,91 @@
             </header>
 
             <div id="main-content-area" class="p-6 space-y-6">
-                <!-- Zona dedicată pentru input manual ore pontaj și ieșire automată (Zi / Noapte) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    <div class="lg:col-span-1 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between space-y-6">
+                        <div>
+                            <div class="flex items-center space-x-3 mb-3">
+                                <div class="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-lg">⏱️</div>
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-200">Panou Pontaj</h3>
+                                    <p class="text-xs text-slate-400">Gestionează-ți programul de lucru</p>
+                                </div>
+                            </div>
+
+                            <p id="shift-status-text" class="text-slate-400 text-sm mb-4">Alege tipul de tură și apasă Start.</p>
+                            
+                            <div id="validation-alert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium"></div>
+
+                            <div class="bg-slate-950 p-4 rounded-xl text-center mb-6 border border-slate-800">
+                                <span id="timer-label" class="block text-xs text-slate-400 uppercase tracking-wider">Timp scurs</span>
+                                <span id="timer-display" class="text-3xl font-mono font-bold text-emerald-400 mt-1 block">00:00:00</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="btn-start-zi" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-3 rounded-xl transition text-xs shadow-lg flex flex-col items-center justify-center space-y-1 cursor-pointer">
+                                    <span class="text-base">☀️</span><span>Pontaj Zi</span>
+                                    <span class="text-[10px] opacity-80">(00:00 - 19:59)</span>
+                                </button>
+                                <button id="btn-start-noapte" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-3 rounded-xl transition text-xs shadow-lg flex flex-col items-center justify-center space-y-1 cursor-pointer">
+                                    <span class="text-base">🌙</span><span>Pontaj Noapte</span>
+                                    <span class="text-[10px] opacity-80">(20:00 - 23:00)</span>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="btn-pause" class="hidden bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-3 rounded-xl transition text-xs flex items-center justify-center space-x-1 cursor-pointer">
+                                    <span>⏸️</span><span>Pauză</span>
+                                </button>
+                                <button id="btn-resume" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-3 rounded-xl transition text-xs flex items-center justify-center space-x-1 cursor-pointer">
+                                    <span>▶️</span><span>Reia</span>
+                                </button>
+                            </div>
+
+                            <button id="btn-stop" class="hidden w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 px-4 rounded-xl transition text-xs shadow-lg flex items-center justify-center space-x-2 cursor-pointer">
+                                <span>🛑</span><span>Termină Pontaj (Stop)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-base font-bold text-slate-200 mb-4">Istoricul Turelor Mele</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase">
+                                            <th class="pb-3 font-semibold">Data</th>
+                                            <th class="pb-3 font-semibold">Tip Tură</th>
+                                            <th class="pb-3 font-semibold">Start</th>
+                                            <th class="pb-3 font-semibold">Stop</th>
+                                            <th class="pb-3 font-semibold text-right">Durată</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="shifts-history-table" class="divide-y divide-slate-800/50 text-sm text-slate-300">
+                                        <tr><td colspan="5" class="py-4 text-center text-slate-500">Se încarcă istoricul...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 max-w-xl">
                     <h2 class="text-lg font-bold text-slate-100">Configurare Pontaj & Durată Maximă</h2>
-
-                    <!-- Căsuță nouă pentru schimbarea manuală a orelor de la pontaj -->
                     <div class="space-y-2">
                         <label for="manual-ore-input" class="block text-sm font-medium text-slate-300">
                             Modifică manual orele de la pontaj:
                         </label>
-                        <input 
-                            type="text" 
-                            id="manual-ore-input" 
-                            placeholder="Introduceți orele (ex: 08:00 sau număr ore)" 
-                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition"
-                        >
+                        <input type="text" id="manual-ore-input" placeholder="Introduceți orele (ex: 08:00 sau număr ore)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition">
                     </div>
-
-                    <!-- Afișarea automată a orei de ieșire -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                        <!-- Tura de Zi -->
                         <div class="bg-slate-950/50 border border-slate-800/80 p-4 rounded-xl space-y-1">
                             <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Tura de Zi</span>
                             <p class="text-sm text-slate-400">Ora de ieșire (automată 19:59):</p>
                             <div id="iesire-zi-auto" class="text-xl font-bold text-slate-100">19:59</div>
                         </div>
-
-                        <!-- Tura de Noapte -->
                         <div class="bg-slate-950/50 border border-slate-800/80 p-4 rounded-xl space-y-1">
                             <span class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Tura de Noapte</span>
                             <p class="text-sm text-slate-400">Ora de ieșire (automată 23:00):</p>
@@ -113,55 +165,52 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Panou Setări Admin - Ieșire Automată din Tură -->
-                <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 max-w-xl">
-                    <h2 class="text-lg font-bold text-slate-100">Setări Admin - Ieșire Automată din Tură</h2>
-                    <form id="admin-auto-checkout-form" class="space-y-4">
-                        <div class="space-y-2">
-                            <label for="admin-night-shift-end" class="block text-sm font-medium text-slate-300">
-                                Ora ieșire automată Tura de Noapte:
-                            </label>
-                            <input 
-                                type="time" 
-                                id="admin-night-shift-end" 
-                                value="23:00" 
-                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500 transition"
-                            >
-                        </div>
-
-                        <div class="space-y-2">
-                            <label for="admin-day-shift-end" class="block text-sm font-medium text-slate-300">
-                                Ora ieșire automată Tura de Zi:
-                            </label>
-                            <input 
-                                type="time" 
-                                id="admin-day-shift-end" 
-                                value="19:59" 
-                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition"
-                            >
-                        </div>
-
-                        <button type="button" id="save-admin-settings-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-4 rounded-xl transition shadow-lg shadow-emerald-600/20">
-                            Salvează Setările Admin
-                        </button>
-                    </form>
-                </div>
             </div>
         </main>
     </div>
 
-    <!-- Script pentru logica de rutare a butoanelor de pontaj (Corectat) -->
+    <!-- Script securizat pentru logare Discord și interschimbarea ecranelor -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const clientId = "1530859145459138601";
-            const redirectUri = encodeURIComponent(window.location.href.split('#')[0]);
+            const cleanUrl = window.location.href.split('#')[0].split('?')[0];
+            const redirectUri = encodeURIComponent(cleanUrl);
             
-            const discordWebOAuth = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify+email`;
+            const discordWebOAuth = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify%20email`;
             
             const btn = document.getElementById('discord-login-btn');
             if (btn) {
                 btn.href = discordWebOAuth;
+            }
+
+            // Verificare Token la revenirea din Discord OAuth
+            const fragment = new URLSearchParams(window.location.hash.slice(1));
+            const accessToken = fragment.get("access_token");
+            const savedToken = localStorage.getItem("discord_access_token");
+
+            const loginScreen = document.getElementById('login-screen');
+            const appContainer = document.getElementById('app-container');
+
+            if (accessToken) {
+                // Salvăm token-ul primit și ascundem ecranul de login
+                localStorage.setItem("discord_access_token", accessToken);
+                if (loginScreen) loginScreen.classList.add('hidden');
+                if (appContainer) appContainer.classList.remove('hidden');
+                // Curățăm URL-ul de hash din motive estetice și de securitate
+                window.history.replaceState({}, document.title, cleanUrl);
+            } else if (savedToken) {
+                // Dacă există deja un token salvat anterior în sesiune
+                if (loginScreen) loginScreen.classList.add('hidden');
+                if (appContainer) appContainer.classList.remove('hidden');
+            }
+
+            // Gestionare buton deconectare / ieșire cont
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    localStorage.removeItem("discord_access_token");
+                    window.location.href = cleanUrl;
+                });
             }
         });
     </script>
