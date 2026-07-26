@@ -43,14 +43,12 @@
                 <a href="#" data-section="Contracte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Contracte & Documente</a>
                 <a href="#" data-section="Rapoarte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Rapoarte</a>
                 <a href="#" data-section="Admin" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Setări Admin</a>
-                
-                <!-- Marketplace dinamic controlat prin JS / roluri -->
-                <button id="btn-marketplace" data-role="Mecanic" class="hidden w-full text-left items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 transition font-medium">
+                <!-- Noul buton de Marketplace (vizibil sau controlat prin JS) -->
+                <button id="btn-marketplace" data-role="Mecanic" class="hidden flex items-center gap-2 ...">
                     <span>Marketplace</span>
                 </button>
-
-                <a href="https://lttlmario.github.io/marketplace-legal/" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="nav-link flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition font-medium">
-                    <span>Market Intern</span>
+                <a href="https://lttlmario.github.io/marketplace-legal/" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="nav-link flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition font-medium">
+                <span>Market Intern</span>
                 </a>
             </nav>
             <div class="p-4 border-t border-slate-800 flex items-center justify-center">
@@ -153,7 +151,7 @@
         </main>
     </div>
 
-    <!-- Script pentru logica de rutare a butoanelor de pontaj -->
+    <!-- Script pentru logica de rutare a butoanelor de pontaj (Corectat) -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const clientId = "1530859145459138601";
