@@ -44,20 +44,14 @@
                 <a href="#" data-section="Rapoarte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Rapoarte</a>
                 <a href="#" data-section="Admin" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Setări Admin</a>
                 
-                <!-- Buton Marketplace controlat dinamic după rol (ex: Mecanic) sau vizibil -->
-                <button id="btn-marketplace" data-role="Mecanic" onclick="window.open('https://lttlmario.github.io/marketplace-legal/', '_blank')" class="w-full hidden items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition font-medium text-left">
+                <!-- Marketplace dinamic controlat prin JS / roluri -->
+                <button id="btn-marketplace" data-role="Mecanic" class="hidden w-full text-left items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300 transition font-medium">
                     <span>Marketplace</span>
                 </button>
-                <button id="btn-marketplace-ilegal" data-role="Familia" onclick="window.open('https://lttlmario.github.io/marketplace-ilegal/', '_blank')" class="w-full hidden items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition font-medium text-left">
-                    <span>Marketplace Ilegal</span>
-                </button>
-                <button id="btn-locatii-ilegale" data-role="Familia" onclick="window.open('https://lttlmario.github.io/hatra-ilegale-bzone/', '_blank')" class="w-full hidden items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition font-medium text-left">
-                    <span>Locatii Ilegale + Info</span>
-                </button>
-                <button id="btn-masa-crafting" data-role="Mecanic" onclick="window.open('https://lttlmario.github.io/masa-crafting/', '_blank')" class="w-full hidden items-center space-x-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 transition font-medium text-left">
-                    <span>Info Masa Crafting</span>
-                </button>
-                </button>
+
+                <a href="https://lttlmario.github.io/marketplace-legal/" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" class="nav-link flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition font-medium">
+                    <span>Market Intern</span>
+                </a>
             </nav>
             <div class="p-4 border-t border-slate-800 flex items-center justify-center">
                 <button id="logout-btn" class="w-full text-xs bg-slate-800 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 py-2 rounded-lg transition">Ieșire din cont</button>
