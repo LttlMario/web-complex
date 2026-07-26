@@ -43,7 +43,6 @@
                 <a href="#" data-section="Contracte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Contracte & Documente</a>
                 <a href="#" data-section="Rapoarte" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Rapoarte</a>
                 <a href="#" data-section="Admin" class="nav-link block px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-300">Setări Admin</a>
-                <!-- Noul buton de Marketplace (vizibil sau controlat prin JS) -->
                 <button id="btn-marketplace" data-role="Mecanic" class="hidden flex items-center gap-2 ...">
                     <span>Marketplace</span>
                 </button>
@@ -79,6 +78,80 @@
             </header>
 
             <div id="main-content-area" class="p-6 space-y-6">
+                <!-- Panoul Nou Integrat de Pontaj și Istoric -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    <!-- Card de control modern -->
+                    <div class="lg:col-span-1 bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between space-y-6">
+                        <div>
+                            <div class="flex items-center space-x-3 mb-3">
+                                <div class="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-lg">⏱️</div>
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-200">Panou Pontaj</h3>
+                                    <p class="text-xs text-slate-400">Gestionează-ți programul de lucru</p>
+                                </div>
+                            </div>
+
+                            <p id="shift-status-text" class="text-slate-400 text-sm mb-4">Alege tipul de tură și apasă Start.</p>
+                            
+                            <div id="validation-alert" class="hidden mb-4 p-3 rounded-xl text-xs font-medium"></div>
+
+                            <div class="bg-slate-950 p-4 rounded-xl text-center mb-6 border border-slate-800">
+                                <span id="timer-label" class="block text-xs text-slate-400 uppercase tracking-wider">Timp scurs</span>
+                                <span id="timer-display" class="text-3xl font-mono font-bold text-emerald-400 mt-1 block">00:00:00</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="btn-start-zi" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-3 rounded-xl transition text-xs shadow-lg flex flex-col items-center justify-center space-y-1 cursor-pointer">
+                                    <span class="text-base">☀️</span><span>Pontaj Zi</span>
+                                    <span class="text-[10px] opacity-80">(00:00 - 19:59)</span>
+                                </button>
+                                <button id="btn-start-noapte" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-3 rounded-xl transition text-xs shadow-lg flex flex-col items-center justify-center space-y-1 cursor-pointer">
+                                    <span class="text-base">🌙</span><span>Pontaj Noapte</span>
+                                    <span class="text-[10px] opacity-80">(20:00 - 23:00)</span>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="btn-pause" class="hidden bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-3 rounded-xl transition text-xs flex items-center justify-center space-x-1 cursor-pointer">
+                                    <span>⏸️</span><span>Pauză</span>
+                                </button>
+                                <button id="btn-resume" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-3 rounded-xl transition text-xs flex items-center justify-center space-x-1 cursor-pointer">
+                                    <span>▶️</span><span>Reia</span>
+                                </button>
+                            </div>
+
+                            <button id="btn-stop" class="hidden w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 px-4 rounded-xl transition text-xs shadow-lg flex items-center justify-center space-x-2 cursor-pointer">
+                                <span>🛑</span><span>Termină Pontaj (Stop)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Istoric & Statistici -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-base font-bold text-slate-200 mb-4">Istoricul Turelor Mele</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase">
+                                            <th class="pb-3 font-semibold">Data</th>
+                                            <th class="pb-3 font-semibold">Tip Tură</th>
+                                            <th class="pb-3 font-semibold">Start</th>
+                                            <th class="pb-3 font-semibold">Stop</th>
+                                            <th class="pb-3 font-semibold text-right">Durată</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="shifts-history-table" class="divide-y divide-slate-800/50 text-sm text-slate-300">
+                                        <tr><td colspan="5" class="py-4 text-center text-slate-500">Se încarcă istoricul...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Zona dedicată pentru input manual ore pontaj și ieșire automată (Zi / Noapte) -->
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6 max-w-xl">
                     <h2 class="text-lg font-bold text-slate-100">Configurare Pontaj & Durată Maximă</h2>
