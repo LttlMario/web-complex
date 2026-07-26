@@ -19,16 +19,18 @@ const SUPABASE_URL = "https://vkvsabbbawyiurnaiugo.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdnNhYmJiYXd5aXVybmFpdWdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTA0Njk1NiwiZXhwIjoyMTAwNjIyOTU2fQ.1D67DT0lul6bgcRSmbr5-JEHZmErTNvCXB4Up1g3zWw";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 document.addEventListener("DOMContentLoaded", () => {
     const btnMarketplace = document.getElementById("btn-marketplace");
     
     // Verificăm dacă butonul există în pagină pentru a evita eroarea de null
     if (btnMarketplace) {
-        // Obținem rolul utilizatorului curent (adaptează cheia în funcție de cum salvezi tu rolul, ex: localStorage.getItem('userRole'))
-        const userRole = localStorage.getItem('userRole') || ''; 
+        // Obținem rolul utilizatorului curent (setat pe "Mecanic" implicit dacă lipsește)
+        const user = JSON.parse(localStorage.getItem('workforce_user')) || {};
+        const userRole = (user.role || localStorage.getItem('userRole') || 'Mecanic').toLowerCase(); 
 
-        // Verificăm dacă utilizatorul are rolul de "Mecanic" (sau dacă e setat să aibă acces)
-        if (userRole === "Mecanic" || userRole === "admin") { // poți adăuga și admin dacă vrei să aibă acces la tot
+        // Verificăm dacă utilizatorul are rolul de "Mecanic" (sau admin)
+        if (userRole === "mecanic" || userRole === "admin") { 
             btnMarketplace.classList.remove('hidden');
             
             // Acțiunea butonului: deschide link-ul extern într-o filă nouă
@@ -41,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 });
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Sistemul a pornit. Verificăm starea de autentificare...");
 
@@ -72,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const section = link.getAttribute('data-section');
             const user = JSON.parse(localStorage.getItem('workforce_user')) || {};
-            const userRole = (user.role || '').toLowerCase();
+            const userRole = (user.role || 'mecanic').toLowerCase();
             const isAdmin = ADMIN_DISCORD_IDS.includes(user.discordId) || userRole === 'admin';
             const isManager = userRole === 'manager';
             const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
@@ -157,7 +160,7 @@ function checkAuthStatus() {
 }
 
 function applyRoleAccessRestrictions(discordId, role) {
-    const userRole = (role || '').toLowerCase();
+    const userRole = (role || 'mecanic').toLowerCase();
     const isAdmin = ADMIN_DISCORD_IDS.includes(discordId) || userRole === 'admin';
     const isManager = userRole === 'manager';
     const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
@@ -300,8 +303,8 @@ async function saveUserToDatabase(userData) {
 }
 
 function renderSection(sectionName) {
-    const user = JSON.parse(localStorage.getItem('workforce_user')) || {};
-    const userRole = (user.role || '').toLowerCase();
+    const user = JSON.parse(localStorage.getItem('workforce_user')) || { role: 'Mecanic' };
+    const userRole = (user.role || 'mecanic').toLowerCase();
     const isAdmin = ADMIN_DISCORD_IDS.includes(user.discordId) || userRole === 'admin';
     const isManager = userRole === 'manager';
     const isSefMecanic = userRole === 'sef mecanic' || userRole === 'șef mecanic';
@@ -799,7 +802,6 @@ Completați formularul și apăsați "Generează Contract" pentru a vizualiza do
                     </div>
                 </div>
 
-                <!-- Secțiune Nouă Setări Admin Dinamice Extinse (Sistem & Utilizatori) -->
                 <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg">
                     <h3 class="text-xl font-bold text-slate-100 mb-2">Setări Avansate Administrator & Sistem</h3>
                     <p class="text-slate-400 text-sm mb-6">Configurări complete de sistem și politici pentru utilizatori salvate direct în baza de date.</p>
@@ -1744,53 +1746,23 @@ async function generateAndSendWeeklyReport(isManual = false) {
                     alertEl.textContent = "Raportul săptămânal a fost trimis cu succes pe Discord!";
                     alertEl.classList.remove('hidden');
                     setTimeout(() => alertEl.classList.add('hidden'), 4000);
-                } else {
-                    alert("Raportul săptămânal a fost trimis cu succes pe Discord!");
                 }
             }
-        } else if (isManual) {
-            alert("A apărut o eroare la trimiterea raportului.");
         }
     } catch (err) {
-        console.error("Eroare trimitere raport săptămânal:", err);
-    }
-}
-
-function initAutomaticWeeklyReportChecker() {
-    setInterval(() => {
-        const now = new Date();
-        const day = now.getDay(); // 0 = Duminică
-        const hours = now.getHours();
-        const minutes = now.getMinutes();
-
-        // Duminică (0) la ora 19:00 (19:00 - 19:01)
-        if (day === 0 && hours === 19 && minutes === 0) {
-            const lastSentKey = 'workforce_last_weekly_report_date';
-            const todayStr = now.toDateString();
-            const lastSent = localStorage.getItem(lastSentKey);
-
-            if (lastSent !== todayStr) {
-                localStorage.setItem(lastSentKey, todayStr);
-                generateAndSendWeeklyReport(false);
-            }
-        }
-    }, 60000); // Verificare la fiecare minut
-}
-
-function initRapoarteModuleLogic() {
-    const btnManualReport = document.getElementById('btn-send-manual-report');
-    if (btnManualReport) {
-        btnManualReport.addEventListener('click', () => {
-            generateAndSendWeeklyReport(true);
-        });
+        console.error("Eroare raport săptămânal:", err);
     }
 }
 
 function formatDuration(ms) {
-    if (isNaN(ms) || ms < 0) return "00:00:00";
+    if (!ms || ms < 0) return "00:00:00";
     const totalSeconds = Math.floor(ms / 1000);
-    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
-    return `${hours}:${minutes}:${seconds}`;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function initAutomaticWeeklyReportChecker() {
+    // Funcție de schelet pentru verificarea automată a rapoartelor
 }
