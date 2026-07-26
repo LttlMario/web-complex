@@ -1946,3 +1946,4 @@ function formatDuration(ms) {
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     return `${hours}:${minutes}:${seconds}`;
 }
+```[cite: 8]
