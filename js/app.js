@@ -20,6 +20,27 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
+document.addEventListener("DOMContentLoaded", () => {
+    const btnLocatiiIlegale = document.getElementById("btn-locatii-ilegale");
+    
+    if (btnLocatiiIlegale) {
+        const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
+        // Preluăm rolul permis direct din atributul elementului (ex: "Familia")
+        const allowedRole = (btnLocatiiIlegale.getAttribute('data-role') || '').toLowerCase();
+
+        if (userRole === allowedRole || userRole === "admin") {
+            btnLocatiiIlegale.classList.remove('hidden');
+            // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
+            // sau o poți muta aici pentru consistență:
+            btnLocatiiIlegale.addEventListener('click', () => {
+                window.open("https://lttlmario.github.io/hatra-ilegale-bzone/", "_blank");
+            });
+        } else {
+            btnLocatiiIlegale.classList.add('hidden');
+        }
+    }
+});
 document.addEventListener("DOMContentLoaded", () => {
     const btnMarketplace = document.getElementById("btn-marketplace");
     const btnMarketplaceIlegal = document.getElementById("btn-marketplace-ilegal");
