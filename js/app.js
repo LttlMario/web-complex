@@ -159,15 +159,12 @@ async function verifyAndActivateDatabaseStructure() {
     try {
         console.log("Verificăm și activăm tabelele din structura SQL (users, shifts, contracte, admin_settings, audit_logs)...");
         
-        // Verificăm tabela shifts
         const { error: errShifts } = await supabaseClient.from('shifts').select('id').limit(1);
         if (errShifts) console.warn("Tabela 'shifts' necesită atenție sau nu este accesibilă direct:", errShifts.message);
 
-        // Verificăm tabela contracte
         const { error: errContracte } = await supabaseClient.from('contracte').select('id').limit(1);
         if (errContracte) console.warn("Tabela 'contracte' necesită atenție:", errContracte.message);
 
-        // Verificăm tabela users
         const { error: errUsers } = await supabaseClient.from('users').select('discord_id').limit(1);
         if (errUsers) console.warn("Tabela 'users' necesită atenție:", errUsers.message);
 
@@ -1049,7 +1046,6 @@ async function initAdminLogic() {
             const defaultRoleVal = settingDefaultRole ? settingDefaultRole.value : 'Mecanic';
 
             try {
-                // Salvăm atât în admin_settings cât și în users pentru compatibilitate maximă cu structura SQL
                 const settingPayload = {
                     id: 1,
                     maintenance_mode: maintenanceVal,
@@ -1078,7 +1074,6 @@ async function initAdminLogic() {
                         default_role: defaultRoleVal
                     }], { onConflict: ['discord_id'] });
 
-                // Înregistrăm acțiunea și în audit_logs
                 await supabaseClient.from('audit_logs').insert([{
                     action: 'UPDATE_ADMIN_SETTINGS',
                     details: JSON.stringify(settingPayload),
@@ -1329,7 +1324,7 @@ Art. 8 – Demisia și încetarea contractului
 
 Angajatul poate demisiona prin notificare scrisă, cu respectarea termenului de preaviz prevăzut de lege sau de prezentul contract.
 
-Angajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectအချိန် respectarea procedurilor legale.
+Angajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectarea procedurilor legale.
 
 La încetarea raporturilor de muncă, angajatul va preda toate bunurile, echipamentele, documentele și materialele aparținând societății.
 
@@ -1382,7 +1377,6 @@ Semnătură:`;
                 return;
             }
 
-            // Activare și salvare automată în tabela Supabase 'contracte'
             try {
                 const contractRecord = {
                     discord_id: user.discordId || 'system_operator',
@@ -1643,12 +1637,13 @@ function initAdvancedPontajLogic() {
             if (netDuration > 0 && user && user.discordId) {
                 const shiftData = {
                     discord_id: user.discordId,
-                    date: new Date(shiftState.startTime).toLocaleDateString(),
+                    date: new Date(shiftState.startTime).toLocaleDateString('ro-RO'),
                     start_time: new Date(shiftState.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     end_time: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     duration: formatDuration(netDuration),
                     duration_ms: netDuration,
                     shift_type: shiftState.shiftType
+                    // Notă: created_at este lăsat în mod intenționat pe seama Supabase (timestamptz)
                 };
 
                 await saveShiftToDatabase(shiftData);
@@ -1750,6 +1745,7 @@ async function updateAndSendLeaderboard() {
                 stats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', ms: 0, shifts: 0 };
             }
             stats[s.discord_id].shifts += 1;
+            // Folosim strict duration_ms pentru calculele din Leaderboard
             stats[s.discord_id].ms += s.duration_ms || 0;
         });
 
@@ -1789,11 +1785,12 @@ async function fetchAndRenderShiftsHistory() {
     if (!user || !user.discordId) return;
 
     try {
+        // Refactorizat: Ordonarea se face folosind created_at (timestamptz) în loc de coloana date (text)
         const { data: history, error } = await supabaseClient
             .from('shifts')
             .select('*')
             .eq('discord_id', user.discordId)
-            .order('id', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (error || !Array.isArray(history) || history.length === 0) {
             historyTable.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">Nicio tură înregistrată.</td></tr>`;
@@ -1811,19 +1808,24 @@ async function fetchAndRenderShiftsHistory() {
         if (statTotalHours) statTotalHours.textContent = formatDuration(totalMsSum);
         if (statTotalShifts) statTotalShifts.textContent = history.length;
 
-        historyTable.innerHTML = history.map(s => `
-            <tr class="hover:bg-slate-800/30 transition">
-                <td class="py-3 text-slate-300">${s.date}</td>
-                <td class="py-3 text-indigo-400 font-medium">${s.shift_type || 'Tură de Zi'}</td>
-                <td class="py-3 text-emerald-400 font-medium">${s.start_time}</td>
-                <td class="py-3 text-rose-400 font-medium">${s.end_time}</td>
-                <td class="py-3 font-mono text-slate-200">${s.duration}</td>
-            </tr>
-        `).join('');
+        historyTable.innerHTML = history.map(s => {
+            // Folosim created_at pentru afișarea corectă a datei dacă este necesar, sau coloana date prietenoasă
+            const friendlyDate = s.date || (s.created_at ? new Date(s.created_at).toLocaleDateString('ro-RO') : '-');
+            return `
+                <tr class="hover:bg-slate-800/30 transition">
+                    <td class="py-3 text-slate-300">${friendlyDate}</td>
+                    <td class="py-3 text-indigo-400 font-medium">${s.shift_type || 'Tură de Zi'}</td>
+                    <td class="py-3 text-emerald-400 font-medium">${s.start_time}</td>
+                    <td class="py-3 text-rose-400 font-medium">${s.end_time}</td>
+                    <td class="py-3 font-mono text-slate-200">${s.duration}</td>
+                </tr>
+            `;
+        }).join('');
 
         const dailyMap = {};
         history.forEach(s => {
-            const dateKey = s.date;
+            // Grupare bazată pe created_at convertit la data locală pentru acuratețe maximă
+            const dateKey = s.created_at ? new Date(s.created_at).toLocaleDateString('ro-RO') : (s.date || 'Necunoscut');
             if (!dailyMap[dateKey]) dailyMap[dateKey] = { count: 0, ms: 0 };
             dailyMap[dateKey].count += 1;
             if (s.duration_ms) dailyMap[dateKey].ms += s.duration_ms;
@@ -1897,177 +1899,32 @@ async function generateAndSendWeeklyReport(isManual = false) {
         if (sortedTeam.length === 0) {
             reportMessage += `_Nicio înregistrare disponibilă în baza de date._`;
         } else {
-            sortedTeam.slice(0, 5).forEach((item, index) => {
-                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
-                reportMessage += `${medal} **${item.name}** — \`${formatDuration(item.ms)}\` (${item.shifts} ture)\n`;
+            sortedTeam.slice(0, 5).forEach((member, idx) => {
+                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `\`#${idx + 1}\``;
+                reportMessage += `${medal} **${member.name}** — \`${formatDuration(member.ms)}\` (${member.shifts} ture)\n`;
             });
         }
 
-        const response = await fetch(WEBHOOK_LOGS, {
+        await fetch(WEBHOOK_LOGS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: reportMessage })
         });
-
-        if (response.ok || response.status === 204) {
-            if (isManual) {
-                const alertEl = document.getElementById('report-action-alert');
-                if (alertEl) {
-                    alertEl.textContent = "Raportul săptămânal a fost trimis cu succes pe Discord!";
-                    alertEl.classList.remove('hidden');
-                    setTimeout(() => alertEl.classList.add('hidden'), 4000);
-                } else {
-                    alert("Raportul săptămânal a fost trimis cu succes pe Discord!");
-                }
-            }
-        } else if (isManual) {
-            alert("A apărut o eroare la trimiterea raportului.");
-        }
-    } catch (err) {
-        console.error("Eroare trimitere raport săptămânal:", err);
+    } catch (e) {
+        console.error("Eroare generare raport săptămânal:", e);
     }
 }
 
 function initAutomaticWeeklyReportChecker() {
-    setInterval(() => {
-        const now = new Date();
-        const day = now.getDay(); 
-        const hours = now.getHours();
-        const minutes = now.getMinutes();
+    const lastCheck = localStorage.getItem('workforce_last_weekly_report');
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Duminică
+    const currentHour = now.getHours();
 
-        if (day === 0 && hours === 19 && minutes === 0) {
-            const lastSentKey = 'workforce_last_weekly_report_date';
-            const todayStr = now.toDateString();
-            const lastSent = localStorage.getItem(lastSentKey);
+    const todayStr = now.toISOString().split('T')[0];
 
-            if (lastSent !== todayStr) {
-                localStorage.setItem(lastSentKey, todayStr);
-                generateAndSendWeeklyReport(false);
-            }
-        }
-    }, 60000);
-}
-
-function initRapoarteModuleLogic() {
-    const btnManualReport = document.getElementById('btn-send-manual-report');
-    const tableBody = document.getElementById('reports-leaderboard-table');
-    const repTotalHours = document.getElementById('rep-total-hours');
-    const repTotalShifts = document.getElementById('rep-total-shifts');
-    const repTotalUsers = document.getElementById('rep-total-users');
-    const repAvgShift = document.getElementById('rep-avg-shift');
-    const btnRefresh = document.getElementById('btn-refresh-reports');
-    const btnApplyFilters = document.getElementById('btn-apply-filters');
-    const filterPeriod = document.getElementById('rep-filter-period');
-    const searchInput = document.getElementById('rep-search-input');
-
-    if (btnManualReport) {
-        btnManualReport.addEventListener('click', () => {
-            generateAndSendWeeklyReport(true);
-        });
+    if (currentDay === 0 && currentHour >= 20 && lastCheck !== todayStr) {
+        generateAndSendWeeklyReport(false);
+        localStorage.setItem('workforce_last_weekly_report', todayStr);
     }
-
-    const loadReportData = async () => {
-        if (!tableBody) return;
-        tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Se încarcă rapoartele din baza de date...</td></tr>`;
-
-        try {
-            const { data: shifts, error: shiftsError } = await supabaseClient.from('shifts').select('*');
-            const { data: users, error: usersError } = await supabaseClient.from('users').select('*');
-
-            if (shiftsError || usersError) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la citirea datelor din Supabase.</td></tr>`;
-                return;
-            }
-
-            if (!shifts || shifts.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio tură înregistrată în baza de date.</td></tr>`;
-                if (repTotalHours) repTotalHours.textContent = "00:00:00";
-                if (repTotalShifts) repTotalShifts.textContent = "0";
-                if (repTotalUsers) repTotalUsers.textContent = "0";
-                if (repAvgShift) repAvgShift.textContent = "00:00:00";
-                return;
-            }
-
-            const userMap = {};
-            if (users) {
-                users.forEach(u => {
-                    userMap[u.discord_id] = u.display_name || u.username;
-                });
-            }
-
-            const period = filterPeriod ? filterPeriod.value : 'all';
-            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            const now = new Date();
-
-            const filteredShifts = shifts.filter(s => {
-                if (period === 'today') {
-                    const shiftDate = new Date(s.date);
-                    if (shiftDate.toDateString() !== now.toDateString()) return false;
-                } else if (period === 'week') {
-                    const shiftDate = new Date(s.date);
-                    const weekAgo = new Date();
-                    weekAgo.setDate(now.getDate() - 7);
-                    if (shiftDate < weekAgo) return false;
-                }
-
-                if (searchTerm) {
-                    const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
-                    if (!mName.includes(searchTerm)) return false;
-                }
-
-                return true;
-            });
-
-            let totalMs = 0;
-            const activeUsersSet = new Set();
-            const userStats = {};
-
-            filteredShifts.forEach(s => {
-                const ms = s.duration_ms || 0;
-                totalMs += ms;
-                activeUsersSet.add(s.discord_id);
-
-                if (!userStats[s.discord_id]) {
-                    userStats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', shifts: 0, ms: 0 };
-                }
-                userStats[s.discord_id].shifts += 1;
-                userStats[s.discord_id].ms += ms;
-            });
-
-            const totalShiftsCount = filteredShifts.length;
-            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
-
-            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
-            if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
-            if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
-            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
-
-            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
-
-            if (sortedTeam.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
-                return;
-            }
-
-            tableBody.innerHTML = sortedTeam.map((item, index) => {
-                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
-                return `
-                    <tr class="hover:bg-slate-800/30 transition">
-                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
-                        <td class="py-3 text-indigo-400 text-center">${item.shifts}</td>
-                        <td class="py-3 text-emerald-400 font-mono font-medium text-right">${formatDuration(item.ms)}</td>
-                    </tr>
-                `;
-            }).join('');
-        } catch (err) {
-            console.error("Eroare la încărcarea rapoartelor:", err);
-            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea datelor.</td></tr>`;
-        }
-    };
-
-    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
-    if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
-    if (searchInput) searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') loadReportData(); });
-
-    loadReportData();
 }
