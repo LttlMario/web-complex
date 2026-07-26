@@ -1589,10 +1589,9 @@ function initAdvancedPontajLogic() {
             const currentMinute = now.getMinutes();
             const totalMinutes = currentHour * 60 + currentMinute;
 
-            // Validare ore stricte pentru Tura de Noapte (20:00 - 23:00 -> 1200 - 1380 minute)
             if (selectedShiftType.includes('Noapte')) {
-                const startNightMin = 20 * 60; // 1200 (20:00)
-                const endNightMin = 23 * 60;   // 1380 (23:00)
+                const startNightMin = 20 * 60; 
+                const endNightMin = 23 * 60;   
                 if (totalMinutes < startNightMin || totalMinutes > endNightMin) {
                     if (validationAlert) {
                         validationAlert.textContent = "Eroare: Tura de Noapte poate fi pornită exclusiv în intervalul orar 20:00 - 23:00!";
@@ -1602,11 +1601,9 @@ function initAdvancedPontajLogic() {
                 }
             }
 
-            // Validare ore stricte pentru Tura de Zi (23:01 - 19:59)
             if (selectedShiftType.includes('Zi')) {
-                const startDayMin = 23 * 60 + 1; // 1381 (23:01)
-                const endDayMin = 19 * 60 + 59;  // 1199 (19:59)
-                // Este valabil între 23:01 și 23:59 sau între 00:00 și 19:59
+                const startDayMin = 23 * 60 + 1; 
+                const endDayMin = 19 * 60 + 59;  
                 const isDuringDay = (totalMinutes >= startDayMin && totalMinutes <= 1439) || (totalMinutes >= 0 && totalMinutes <= endDayMin);
                 if (!isDuringDay) {
                     if (validationAlert) {
@@ -1979,13 +1976,145 @@ function initAutomaticWeeklyReportChecker() {
 
 function initRapoarteModuleLogic() {
     const btnManualReport = document.getElementById('btn-send-manual-report');
+    const btnRefresh = document.getElementById('btn-refresh-reports');
+    const btnExport = document.getElementById('btn-export-reports');
+    const btnApplyFilters = document.getElementById('btn-apply-filters');
+    
     const tableBody = document.getElementById('reports-leaderboard-table');
     const repTotalHours = document.getElementById('rep-total-hours');
     const repTotalShifts = document.getElementById('rep-total-shifts');
     const repTotalUsers = document.getElementById('rep-total-users');
     const repAvgShift = document.getElementById('rep-avg-shift');
-    const btnRefresh = document.getElementById('btn-refresh-reports');
-    const btnApplyFilters = document.getElementById('btn-apply-filters');
+    
     const filterPeriod = document.getElementById('rep-filter-period');
     const searchInput = document.getElementById('rep-search-input');
+
+    if (btnManualReport) {
+        btnManualReport.addEventListener('click', () => {
+            generateAndSendWeeklyReport(true);
+        });
+    }
+
+    const loadRapoarteData = async () => {
+        if (!tableBody) return;
+        tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Se încarcă rapoartele din baza de date...</td></tr>`;
+
+        try {
+            const { data: shifts, error: shiftsError } = await supabaseClient.from('shifts').select('*');
+            const { data: users, error: usersError } = await supabaseClient.from('users').select('*');
+
+            if (shiftsError || usersError) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea datelor din Supabase.</td></tr>`;
+                return;
+            }
+
+            const userMap = {};
+            if (users) {
+                users.forEach(u => {
+                    userMap[u.discord_id] = u.display_name || u.username;
+                });
+            }
+
+            let filteredShifts = shifts || [];
+            const periodVal = filterPeriod ? filterPeriod.value : 'all';
+            const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+            const now = new Date();
+            const todayStr = now.toLocaleDateString();
+
+            if (periodVal === 'today') {
+                filteredShifts = filteredShifts.filter(s => s.date === todayStr);
+            } else if (periodVal === 'week') {
+                const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+                filteredShifts = filteredShifts.filter(s => {
+                    const shiftTimestamp = new Date(s.created_at || s.date).getTime();
+                    return shiftTimestamp >= oneWeekAgo || s.date === todayStr;
+                });
+            }
+
+            let totalMsAll = 0;
+            const activeUsers = new Set();
+            const userStats = {};
+
+            filteredShifts.forEach(s => {
+                const ms = s.duration_ms || 0;
+                totalMsAll += ms;
+                activeUsers.add(s.discord_id);
+
+                const name = userMap[s.discord_id] || 'Mecanic';
+                if (searchVal && !name.toLowerCase().includes(searchVal)) {
+                    return;
+                }
+
+                if (!userStats[s.discord_id]) {
+                    userStats[s.discord_id] = { name: name, shifts: 0, ms: 0 };
+                }
+                userStats[s.discord_id].shifts += 1;
+                userStats[s.discord_id].ms += ms;
+            });
+
+            const totalShiftsCount = filteredShifts.length;
+            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMsAll / totalShiftsCount) : 0;
+
+            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMsAll);
+            if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
+            if (repTotalUsers) repTotalUsers.textContent = activeUsers.size;
+            if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
+
+            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
+
+            if (sortedTeam.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio înregistrare găsită conform filtrelor.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = sortedTeam.map((item, index) => {
+                const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
+                return `
+                    <tr class="hover:bg-slate-800/30 transition">
+                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
+                        <td class="py-3 text-center text-indigo-400">${item.shifts} tură(e)</td>
+                        <td class="py-3 text-right font-mono text-emerald-400">${formatDuration(item.ms)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+        } catch (err) {
+            console.error("Eroare încărcare rapoarte:", err);
+            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare neașteptată la procesarea rapoartelor.</td></tr>`;
+        }
+    };
+
+    if (btnRefresh) btnRefresh.addEventListener('click', loadRapoarteData);
+    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadRapoarteData);
+
+    if (btnExport) {
+        btnExport.addEventListener('click', async () => {
+            try {
+                const { data: shifts } = await supabaseClient.from('shifts').select('*');
+                if (!shifts || shifts.length === 0) {
+                    alert("Nu există date de exportat.");
+                    return;
+                }
+
+                let csvContent = "data:text/csv;charset=utf-8,ID,Discord ID,Data,Start,Stop,Durata,Tip Tura\r\n";
+                shifts.forEach(s => {
+                    csvContent += `${s.id},${s.discord_id},${s.date},${s.start_time},${s.end_time},${s.duration},${s.shift_type || ''}\r\n`;
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `raport_ture_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (err) {
+                console.error("Eroare export CSV:", err);
+            }
+        });
+    }
+
+    loadRapoarteData();
 }
+```[cite: 10]
