@@ -1,0 +1,31 @@
+/* Stili personalizate pentru Workforce Management System */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Scrollbar personalizat pentru o experiență modernă */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #020617; /* slate-950 */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1e293b; /* slate-800 */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #334155; /* slate-700 */
+}
+
+/* Efecte de tranziție fină pentru butoane și elemente de meniu */
+aside nav a {
+    transition: all 0.2s ease-in-out;
+}
