@@ -22,6 +22,26 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 
 document.addEventListener("DOMContentLoaded", () => {
+const btnMasaCrafting = document.getElementById("btn-locatii-ilegale");
+                
+if (btnMasaCrafting) {
+    const userRole = (localStorage.getItem('userRole') || '').toLowerCase();
+    // Preluăm rolul permis direct din atributul elementului (ex: "Familia")
+    const allowedRole = (btnMasaCrafting.getAttribute('data-role') || '').toLowerCase();
+
+    if (userRole === allowedRole || userRole === "admin") {
+        btnMasaCrafting.classList.remove('hidden');
+        // Notă: Deoarece ai deja onclick în HTML, poți lăsa acțiunea acolo 
+        // sau o poți muta aici pentru consistență:
+        btnMasaCrafting.addEventListener('click', () => {
+            window.open("https://lttlmario.github.io/masa-crafting/", "_blank");
+        });
+    } else {
+        btnMasaCrafting.classList.add('hidden');
+    }
+}
+});
+document.addEventListener("DOMContentLoaded", () => {
     const btnLocatiiIlegale = document.getElementById("btn-locatii-ilegale");
     
     if (btnLocatiiIlegale) {
