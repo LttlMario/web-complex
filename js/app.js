@@ -163,8 +163,8 @@ async function verifyAndActivateDatabaseStructure() {
         const { error: errShifts } = await supabaseClient.from('shifts').select('id').limit(1);
         if (errShifts) console.warn("Tabela 'shifts' necesită atenție sau nu este accesibilă direct:", errShifts.message);
 
-        // Verificăm tabela contracte
-        const { error: errContracte } = await supabaseClient.from('contracte').select('id').limit(1);
+        // Verificăm tabela contracte cu noile câmpuri solicitate
+        const { error: errContracte } = await supabaseClient.from('contracte').select('id, discord_id, contract_no, nume_angajat, cnp, telefon, functie, manager, created_at').limit(1);
         if (errContracte) console.warn("Tabela 'contracte' necesită atenție:", errContracte.message);
 
         // Verificăm tabela users
@@ -1049,7 +1049,6 @@ async function initAdminLogic() {
             const defaultRoleVal = settingDefaultRole ? settingDefaultRole.value : 'Mecanic';
 
             try {
-                // Salvăm atât în admin_settings cât și în users pentru compatibilitate maximă cu structura SQL
                 const settingPayload = {
                     id: 1,
                     maintenance_mode: maintenanceVal,
@@ -1078,7 +1077,6 @@ async function initAdminLogic() {
                         default_role: defaultRoleVal
                     }], { onConflict: ['discord_id'] });
 
-                // Înregistrăm acțiunea și în audit_logs
                 await supabaseClient.from('audit_logs').insert([{
                     action: 'UPDATE_ADMIN_SETTINGS',
                     details: JSON.stringify(settingPayload),
@@ -1329,7 +1327,7 @@ Art. 8 – Demisia și încetarea contractului
 
 Angajatul poate demisiona prin notificare scrisă, cu respectarea termenului de preaviz prevăzut de lege sau de prezentul contract.
 
-Angajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectအချိန် respectarea procedurilor legale.
+Angajatorul poate dispune încetarea contractului numai în condițiile și pentru motivele prevăzute de legislația muncii, cu respectarea procedurilor legale.
 
 La încetarea raporturilor de muncă, angajatul va preda toate bunurile, echipamentele, documentele și materialele aparținând societății.
 
@@ -1382,7 +1380,6 @@ Semnătură:`;
                 return;
             }
 
-            // Activare și salvare automată în tabela Supabase 'contracte'
             try {
                 const contractRecord = {
                     discord_id: user.discordId || 'system_operator',
@@ -1959,6 +1956,7 @@ function initRapoarteModuleLogic() {
     const btnApplyFilters = document.getElementById('btn-apply-filters');
     const filterPeriod = document.getElementById('rep-filter-period');
     const searchInput = document.getElementById('rep-search-input');
+    const btnExport = document.getElementById('btn-export-reports');
 
     if (btnManualReport) {
         btnManualReport.addEventListener('click', () => {
@@ -1979,95 +1977,113 @@ function initRapoarteModuleLogic() {
                 return;
             }
 
-            if (!shifts || shifts.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio tură înregistrată în baza de date.</td></tr>`;
-                if (repTotalHours) repTotalHours.textContent = "00:00:00";
-                if (repTotalShifts) repTotalShifts.textContent = "0";
-                if (repTotalUsers) repTotalUsers.textContent = "0";
-                if (repAvgShift) repAvgShift.textContent = "00:00:00";
-                return;
-            }
+            let filteredShifts = shifts || [];
+            const periodVal = filterPeriod ? filterPeriod.value : 'all';
+            const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
             const userMap = {};
+            const userRoleMap = {};
             if (users) {
                 users.forEach(u => {
                     userMap[u.discord_id] = u.display_name || u.username;
+                    userRoleMap[u.discord_id] = u.role || 'Mecanic';
                 });
             }
 
-            const period = filterPeriod ? filterPeriod.value : 'all';
-            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            const now = new Date();
+            if (periodVal === 'today') {
+                const todayStr = new Date().toLocaleDateString();
+                filteredShifts = filteredShifts.filter(s => s.date === todayStr);
+            } else if (periodVal === 'week') {
+                const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+                filteredShifts = filteredShifts.filter(s => {
+                    const shiftTimestamp = new Date(s.date).getTime();
+                    return !isNaN(shiftTimestamp) && shiftTimestamp >= oneWeekAgo;
+                });
+            }
 
-            const filteredShifts = shifts.filter(s => {
-                if (period === 'today') {
-                    const shiftDate = new Date(s.date);
-                    if (shiftDate.toDateString() !== now.toDateString()) return false;
-                } else if (period === 'week') {
-                    const shiftDate = new Date(s.date);
-                    const weekAgo = new Date();
-                    weekAgo.setDate(now.getDate() - 7);
-                    if (shiftDate < weekAgo) return false;
-                }
-
-                if (searchTerm) {
-                    const mName = (userMap[s.discord_id] || 'Mecanic').toLowerCase();
-                    if (!mName.includes(searchTerm)) return false;
-                }
-
-                return true;
-            });
-
-            let totalMs = 0;
-            const activeUsersSet = new Set();
-            const userStats = {};
+            const stats = {};
+            let totalTeamMs = 0;
+            let totalTeamShifts = filteredShifts.length;
+            const activeUsers = new Set();
 
             filteredShifts.forEach(s => {
-                const ms = s.duration_ms || 0;
-                totalMs += ms;
-                activeUsersSet.add(s.discord_id);
-
-                if (!userStats[s.discord_id]) {
-                    userStats[s.discord_id] = { name: userMap[s.discord_id] || 'Mecanic', shifts: 0, ms: 0 };
+                const name = userMap[s.discord_id] || 'Mecanic';
+                if (searchVal && !name.toLowerCase().includes(searchVal)) {
+                    return;
                 }
-                userStats[s.discord_id].shifts += 1;
-                userStats[s.discord_id].ms += ms;
+
+                activeUsers.add(s.discord_id);
+                if (!stats[s.discord_id]) {
+                    stats[s.discord_id] = { name: name, role: userRoleMap[s.discord_id] || 'Mecanic', ms: 0, shifts: 0 };
+                }
+                stats[s.discord_id].shifts += 1;
+                const ms = s.duration_ms || 0;
+                stats[s.discord_id].ms += ms;
+                totalTeamMs += ms;
             });
 
-            const totalShiftsCount = filteredShifts.length;
-            const avgMs = totalShiftsCount > 0 ? Math.floor(totalMs / totalShiftsCount) : 0;
-
-            if (repTotalHours) repTotalHours.textContent = formatDuration(totalMs);
-            if (repTotalShifts) repTotalShifts.textContent = totalShiftsCount;
-            if (repTotalUsers) repTotalUsers.textContent = activeUsersSet.size;
+            if (repTotalHours) repTotalHours.textContent = formatDuration(totalTeamMs);
+            if (repTotalShifts) repTotalShifts.textContent = totalTeamShifts;
+            if (repTotalUsers) repTotalUsers.textContent = activeUsers.size;
+            const avgMs = totalTeamShifts > 0 ? Math.floor(totalTeamMs / totalTeamShifts) : 0;
             if (repAvgShift) repAvgShift.textContent = formatDuration(avgMs);
 
-            const sortedTeam = Object.values(userStats).sort((a, b) => b.ms - a.ms);
+            const sortedList = Object.values(stats).sort((a, b) => b.ms - a.ms);
 
-            if (sortedTeam.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Niciun rezultat găsit pentru filtrele selectate.</td></tr>`;
+            if (sortedList.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-slate-500">Nicio înregistrare găsită cu filtrele selectate.</td></tr>`;
                 return;
             }
 
-            tableBody.innerHTML = sortedTeam.map((item, index) => {
+            tableBody.innerHTML = sortedList.map((item, index) => {
                 const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `\`#${index + 1}\``;
                 return `
                     <tr class="hover:bg-slate-800/30 transition">
-                        <td class="py-3 text-slate-200 font-medium">${medal} ${item.name}</td>
-                        <td class="py-3 text-indigo-400 text-center">${item.shifts}</td>
-                        <td class="py-3 text-emerald-400 font-mono font-medium text-right">${formatDuration(item.ms)}</td>
+                        <td class="py-3 text-slate-200 font-medium flex items-center space-x-2">
+                            <span>${medal}</span>
+                            <span>${item.name} <span class="text-xs text-slate-500 font-normal">(${item.role})</span></span>
+                        </td>
+                        <td class="py-3 text-center text-indigo-400 font-mono">${item.shifts}</td>
+                        <td class="py-3 text-right text-emerald-400 font-mono font-medium">${formatDuration(item.ms)}</td>
                     </tr>
                 `;
             }).join('');
+
         } catch (err) {
-            console.error("Eroare la încărcarea rapoartelor:", err);
-            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la preluarea datelor.</td></tr>`;
+            console.error("Eroare încărcare rapoarte:", err);
+            tableBody.innerHTML = `<tr><td colspan="3" class="py-4 text-center text-rose-500">Eroare la procesarea datelor.</td></tr>`;
         }
     };
 
-    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
     if (btnRefresh) btnRefresh.addEventListener('click', loadReportData);
+    if (btnApplyFilters) btnApplyFilters.addEventListener('click', loadReportData);
     if (searchInput) searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') loadReportData(); });
+
+    if (btnExport) {
+        btnExport.addEventListener('click', async () => {
+            try {
+                const { data: shifts } = await supabaseClient.from('shifts').select('*');
+                if (!shifts || shifts.length === 0) {
+                    alert("Nu există date de exportat.");
+                    return;
+                }
+                let csvContent = "data:text/csv;charset=utf-8,ID,Discord ID,Data,Start,Stop,Durata (MS),Tip Tura\n";
+                shifts.forEach(s => {
+                    csvContent += `${s.id},${s.discord_id},${s.date},${s.start_time},${s.end_time},${s.duration_ms || 0},"${s.shift_type || ''}"\n`;
+                });
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `raport_ture_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (e) {
+                console.error("Eroare export CSV:", e);
+                alert("Eroare la generarea fișierului CSV.");
+            }
+        });
+    }
 
     loadReportData();
 }
