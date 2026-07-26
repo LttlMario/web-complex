@@ -1,7 +1,7 @@
 // Workforce Management System - Pontaj, Loguri, Leaderboard, Înștiințări & Contracte
 // Autor: Little Mario
 
-const DISCORD_CLIENT_ID = "1530859145459138601";
+const DISCORD_CLIENT_ID = "1530594698933047426";
 
 // ID-urile de Discord ale administratorilor (adaugă ID-ul tău aici)
 const ADMIN_DISCORD_IDS = [
@@ -19,7 +19,28 @@ const SUPABASE_URL = "https://vkvsabbbawyiurnaiugo.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrdnNhYmJiYXd5aXVybmFpdWdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTA0Njk1NiwiZXhwIjoyMTAwNjIyOTU2fQ.1D67DT0lul6bgcRSmbr5-JEHZmErTNvCXB4Up1g3zWw";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+document.addEventListener("DOMContentLoaded", () => {
+    const btnMarketplace = document.getElementById("btn-marketplace");
+    
+    // Verificăm dacă butonul există în pagină pentru a evita eroarea de null
+    if (btnMarketplace) {
+        // Obținem rolul utilizatorului curent (adaptează cheia în funcție de cum salvezi tu rolul, ex: localStorage.getItem('userRole'))
+        const userRole = localStorage.getItem('userRole') || ''; 
 
+        // Verificăm dacă utilizatorul are rolul de "Mecanic" (sau dacă e setat să aibă acces)
+        if (userRole === "Mecanic" || userRole === "admin") { // poți adăuga și admin dacă vrei să aibă acces la tot
+            btnMarketplace.classList.remove('hidden');
+            
+            // Acțiunea butonului: deschide link-ul extern într-o filă nouă
+            btnMarketplace.addEventListener('click', () => {
+                window.open("https://lttlmario.github.io/marketplace-legal/", "_blank");
+            });
+        } else {
+            // Dacă nu are rolul necesar, ne asigurăm că rămâne ascuns
+            btnMarketplace.classList.add('hidden');
+        }
+    }
+});
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("Sistemul a pornit. Verificăm starea de autentificare...");
 
