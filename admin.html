@@ -5,23 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panou Admin - Workforce Management</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="css/tailwind.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
@@ -97,7 +81,7 @@
             <!-- Profil Utilizator Dinamic -->
             <div class="p-4 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between">
                 <div class="flex items-center space-x-3 overflow-hidden">
-                    <img id="user-avatar" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
+                    <img id="user-avatar" src="img/logo-192.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
                     <div class="truncate">
                         <p id="user-display-name" class="text-sm font-semibold text-slate-200 truncate">Se încarcă...</p>
                         <p id="user-role" class="text-xs text-emerald-400 truncate">Mecanic</p>
@@ -161,17 +145,7 @@
                             <input type="text" id="search-id" oninput="renderUsersTable()" placeholder="🆔 Caută după Discord ID..." class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-emerald-500">
                         </div>
                         <div>
-                            <select id="filter-role" onchange="renderUsersTable()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                                <option value="">Toate Rolurile</option>
-                                <option value="vizitator">Vizitator</option>
-                                <option value="el mecanico">El Mecanico</option>
-                                <option value="sef mecanic">Șef Mecanic</option>
-                                <option value="familia">La Familia</option>
-                                <option value="coordonator">Coordonator</option>
-                                <option value="manager">Manager</option>
-                                <option value="colider">CoLider</option>
-                                <option value="lider">Lider</option>
-                            </select>
+                            <input id="filter-role" type="number" min="1" max="99" step="1" placeholder="Grad numeric" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-1.5 w-32">
                         </div>
                         <div>
                             <button onclick="resetFilters()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2 px-3 rounded-xl border border-slate-700 transition cursor-pointer">
@@ -335,19 +309,6 @@
         const supabaseClient = window.createPanelSupabaseClient();
 
         let allUsersData = [];
-        const RolePermissions = {
-            "vizitator": 0,
-            "el mecanico": 1,
-            "mecanic": 1,
-            "sef mecanic": 2,
-            "familia": 3,
-            "la familia": 3,
-            "manager": 4,
-            "colider": 5,
-            "lider": 6,
-            "coordonator": 7
-        };
-
         document.addEventListener('DOMContentLoaded', async () => {
             // Evidențiere link activ în sidebar
             const currentPage = window.location.pathname.split("/").pop() || "index.html";
@@ -382,7 +343,7 @@
 
                 const displayName = activeUser.display_name || activeUser.username || 'Mecanic';
                 const role = activeUser.role || activeUser.default_role || 'Mecanic';
-                const userAvatar = activeUser.avatar || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png';
+                const userAvatar = activeUser.avatar || 'img/logo-192.png';
 
                 document.getElementById('user-display-name').textContent = displayName;
                 document.getElementById('user-role').textContent = role;
@@ -452,7 +413,7 @@
             const filteredUsers = allUsersData.filter(u => {
                 const name = (u.display_name || u.username || '').toLowerCase();
                 const id = String(u.discord_id || u.id || '').toLowerCase();
-                const role = (u.role || 'mecanic').toLowerCase();
+                const role = String(Number(u.permission_level ?? u.role ?? 0));
 
                 const matchesName = name.includes(searchName);
                 const matchesId = id.includes(searchId);
@@ -470,7 +431,7 @@
 
             let html = '';
             filteredUsers.forEach((u) => {
-                const currentRole = (u.role || 'vizitator').toLowerCase();
+                const currentRole = String(Number(u.permission_level ?? u.role ?? 0));
                 const uId = u.discord_id || u.id;
 
                 html += `
@@ -483,16 +444,7 @@
                             </span>
                         </td>
                         <td class="p-4">
-                            <select id="role-select-${uId}" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500 cursor-pointer">
-                                <option value="vizitator" ${currentRole === 'vizitator' ? 'selected' : ''}>Vizitator</option>
-                                <option value="el mecanico" ${currentRole === 'el mecanico' || currentRole === 'mecanic' ? 'selected' : ''}>El Mecanico</option>
-                                <option value="sef mecanic" ${currentRole === 'sef mecanic' ? 'selected' : ''}>Șef Mecanic</option>
-                                <option value="familia" ${currentRole === 'familia' || currentRole === 'la familia' ? 'selected' : ''}>La Familia</option>
-                                <option value="coordonator" ${currentRole === 'coordonator' ? 'selected' : ''}>Coordonator</option>
-                                <option value="manager" ${currentRole === 'manager' ? 'selected' : ''}>Manager</option>
-                                <option value="colider" ${currentRole === 'colider' ? 'selected' : ''}>CoLider</option>
-                                <option value="lider" ${currentRole === 'lider' ? 'selected' : ''}>Lider</option>
-                            </select>
+                            <input id="role-select-${uId}" type="number" min="1" max="99" step="1" value="${Number(u.permission_level)||1}" class="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-1.5 w-24 focus:outline-none focus:border-emerald-500">
                         </td>
                         <td class="p-4 text-right space-x-2">
                             <button onclick="updateUserRole('${uId}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow">
@@ -512,13 +464,13 @@
         async function updateUserRole(discordId) {
             const selectEl = document.getElementById(`role-select-${discordId}`);
             if (!selectEl) return;
-            const newRole = selectEl.value;
+            const newRole = String(Math.max(1, Math.min(99, Number(selectEl.value) || 1))); selectEl.value = newRole;
 
             const userObj = allUsersData.find(u => String(u.discord_id || u.id) === String(discordId));
-            if (userObj) userObj.role = newRole;
+            if (userObj) { userObj.role = newRole; userObj.permission_level = Number(newRole); }
 
             try {
-                const permissionLevel = Number(RolePermissions[newRole] || ({vizitator:0,'el mecanico':1,'sef mecanic':2,familia:3,manager:4,colider:5,lider:6,coordonator:7})[newRole] || 0);
+                const permissionLevel = Number(newRole);
                 await window.panelAdminInvoke('member_role', { discord_id:discordId, role:newRole, permission_level:permissionLevel });
                 let error = null;
 

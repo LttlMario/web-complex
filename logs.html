@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loguri - Workforce Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{slate:{850:'#1e293b',900:'#0f172a',950:'#020617'}}}}}</script>
+    <link rel="stylesheet" href="css/tailwind.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/permissions.js"></script>
@@ -83,7 +82,7 @@
             document.getElementById('user-avatar').src =
                 activeUser.avatar ||
                 activeUser.avatar_url ||
-                'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png';
+                'img/logo-192.png';
 
             await loadLogs();
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Autentificare - Workforce Management</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.css">
     <style>
 
     @keyframes fadeUp {
@@ -47,22 +47,6 @@
     }
 
     </style>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="css/global-footer.css">
@@ -113,6 +97,7 @@
 
     </div>
 
+        <div class="mb-3 space-y-2"><label for="voucher-code" class="block text-xs text-slate-400">Voucher (opțional)</label><input id="voucher-code" type="text" maxlength="64" placeholder="Ex: FULL-ABC123" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100"><label for="voucher-guild-id" class="block text-xs text-slate-400">Guild ID pentru voucher</label><input id="voucher-guild-id" type="text" inputmode="numeric" maxlength="22" placeholder="ID-ul serverului Discord ales de tine" class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100"></div>
         <!-- Butonul de Login Discord -->
         <button
             id="discord-login-btn"
@@ -198,7 +183,8 @@
         function getLoginDestination(user) {
             const permissionLevel = Number(user?.permission_level);
 
-            if (Number.isInteger(permissionLevel) && permissionLevel === 0) {
+            const selectedPages = Array.isArray(user?.allowed_pages) && user.allowed_pages.length > 0;
+            if (Number.isInteger(permissionLevel) && permissionLevel === 0 && !selectedPages) {
                 return 'guest.html';
             }
 
@@ -234,7 +220,8 @@
                 const page = destination.pathname.split('/').pop() || 'index.html';
                 const requiredLevel = pagePermissions[page];
                 const userLevel = Number(user?.permission_level) || 0;
-                if (requiredLevel === undefined || userLevel < requiredLevel) return fallback;
+                const selectedPages = Array.isArray(user?.allowed_pages) && user.allowed_pages.includes(page);
+                if (requiredLevel === undefined || (userLevel < requiredLevel && !selectedPages)) return fallback;
                 return `${page}${destination.search}${destination.hash}`;
             } catch (_) {
                 return fallback;
@@ -371,10 +358,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         apikey: SUPABASE_KEY,
                         authorization: `Bearer ${SUPABASE_KEY}`
                     },
-                    body: JSON.stringify({ access_token: token })
+                    body: JSON.stringify({ access_token: token, voucher_code: document.getElementById('voucher-code')?.value.trim().toUpperCase() || null, voucher_guild_id: document.getElementById('voucher-guild-id')?.value.trim() || null })
                 });
                 const syncResult = await syncResponse.json();
                 if (!syncResponse.ok || !syncResult.user) {
+                    if ((syncResult.code === 'NO_ORGANIZATION' || syncResult.code === 'VOUCHER_REQUIRES_ORGANIZATION_SETUP') && document.getElementById('voucher-code')?.value.trim()) { const params = new URLSearchParams({ voucher: document.getElementById('voucher-code').value.trim().toUpperCase(), guild: document.getElementById('voucher-guild-id')?.value.trim() || '' }); window.location.href = `creare-organizatie-voucher.html?${params}`; return; }
                     throw new Error(syncResult.error || 'Rolul Discord nu a putut fi verificat.');
                 }
 
@@ -386,6 +374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('panel_session_expires_at', syncResult.expires_at);
                 localStorage.setItem('panel_active_organization', JSON.stringify(syncResult.active_organization));
                 localStorage.setItem('panel_organizations', JSON.stringify(syncResult.organizations || []));
+                localStorage.setItem('panel_role_synced_at', String(Date.now()));
 
                 setLoginStatus(`✅ ${syncResult.active_organization?.name || 'Organizație'} · ${syncedUser.role}`);
 
@@ -403,6 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     </script>
+    <script src="js/voucher-onboarding.js"></script>
     <script src="js/global-footer.js"></script>
 </body>
 </html>

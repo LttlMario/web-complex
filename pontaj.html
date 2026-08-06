@@ -5,23 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pontaj - Workforce Management</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="css/tailwind.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
@@ -93,10 +77,10 @@
             <!-- Profil Utilizator Dinamic -->
             <div class="p-4 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between">
                 <div class="flex items-center space-x-3 overflow-hidden">
-                    <img id="user-avatar" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
+                    <img id="user-avatar" src="img/logo-192.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
                     <div class="truncate">
                         <p id="user-display-name" class="text-sm font-semibold text-slate-200 truncate">Se încarcă...</p>
-                        <p id="user-role" class="text-xs text-emerald-400 truncate">Mecanic</p>
+                        <p id="user-role" class="text-xs text-emerald-400 truncate">Angajat</p>
                     </div>
                 </div>
                 <button id="logout-btn" title="Ieșire din cont" class="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl transition cursor-pointer text-xs font-medium">
@@ -109,7 +93,7 @@
         <!-- Conținut Principal -->
         <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
             <header class="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur px-8 flex items-center justify-between sticky top-0 z-20">
-                <h2 class="text-lg font-bold text-slate-100">Pontaj Mecanici</h2>
+                <h2 class="text-lg font-bold text-slate-100">Pontaj Angajati</h2>
                 <div class="flex items-center space-x-4">
                     <button onclick="fetchShiftsHistory()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer flex items-center space-x-1.5">
                         <span>🔄</span>
@@ -225,8 +209,9 @@
 
         let currentUser = {
             discord_id: '',
-            display_name: 'Mecanic',
-            role: 'Mecanic'
+            display_name: 'Angajat',
+            role: 'Angajat',
+            organization_id: null
         };
 
         let selectedShiftType = null;
@@ -274,18 +259,19 @@
                 let activeUser = dbUser || localData;
 
                 currentUser.discord_id = activeUser.discord_id;
-                currentUser.display_name = activeUser.display_name || activeUser.username || 'Mecanic';
-                currentUser.role = activeUser.role || activeUser.default_role || 'Mecanic';
+                currentUser.display_name = localData.display_name || activeUser.display_name || activeUser.username || 'Membru';
+                // Rolul sincronizat din Discord este sursa de adevăr, nu valoarea veche din tabelul users.
+                currentUser.role = localData.role || localData.default_role || activeUser.role || activeUser.default_role || 'Membru';
+                currentUser.organization_id = activeUser.organization_id || localData.organization_id || null;
 
-                const userAvatar = activeUser.avatar || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png';
+                const userAvatar = activeUser.avatar || 'img/logo-192.png';
 
                 document.getElementById('user-display-name').textContent = currentUser.display_name;
                 document.getElementById('user-role').textContent = currentUser.role;
                 document.getElementById('user-avatar').src = userAvatar;
 
                 // Control acces elemente avansate (ex: Loguri)
-                const roleLower = currentUser.role.toLowerCase();
-                const isPrivileged = roleLower.includes('sef') || roleLower.includes('șef') || roleLower.includes('manager') || roleLower.includes('admin') || roleLower.includes('owner');
+                const isPrivileged = Number(localData.permission_level ?? activeUser.permission_level ?? 0) >= 1;
 
                 if (isPrivileged) {
                     const navLogs = document.getElementById('nav-logs');
@@ -382,7 +368,7 @@
 
             await createActiveShiftRecord();
 
-            await sendGeneralDiscordWebhook("▶️ Pontaj Start", `Mecanicul **${currentUser.display_name}** a pornit tura de **${selectedShiftType.toUpperCase()}**.`, 3066993);
+            await sendGeneralDiscordWebhook("▶️ Pontaj Start", `Angajatul **${currentUser.display_name}** a pornit tura de **${selectedShiftType.toUpperCase()}**.`, 3066993);
         }
 
         async function legacyPauseShift() {
@@ -394,13 +380,13 @@
                 saveActiveShift();
                 pauseText.textContent = 'Reluare';
                 document.getElementById('current-shift-status').textContent = 'Tura este în PAUZĂ';
-                await sendGeneralDiscordWebhook("⏸️ Pontaj Pauză", `Mecanicul **${currentUser.display_name}** a pus tura de **${selectedShiftType.toUpperCase()}** pe **pauză** la timpul: **${formatTime(secondsElapsed)}**`, 16776960);
+                await sendGeneralDiscordWebhook("⏸️ Pontaj Pauză", `Angajatul **${currentUser.display_name}** a pus tura de **${selectedShiftType.toUpperCase()}** pe **pauză** la timpul: **${formatTime(secondsElapsed)}**`, 16776960);
             } else {
                 runningSince = new Date();
                 saveActiveShift();
                 pauseText.textContent = 'Pauză';
                 document.getElementById('current-shift-status').textContent = `Tura de ${selectedShiftType.toUpperCase()} este activă...`;
-                await sendGeneralDiscordWebhook("▶️ Pontaj Reluat", `Mecanicul **${currentUser.display_name}** a reluat tura de **${selectedShiftType.toUpperCase()}**.`, 3066993);
+                await sendGeneralDiscordWebhook("▶️ Pontaj Reluat", `Angajatul **${currentUser.display_name}** a reluat tura de **${selectedShiftType.toUpperCase()}**.`, 3066993);
             }
         }
 
@@ -479,7 +465,7 @@
                     title: `⏹️ Pontaj Nou Încheiat - Tură de ${data.shift_type.toUpperCase()}`,
                     color: data.shift_type === 'zi' ? 16766720 : 65535,
                     fields: [
-                        { name: "👤 Mecanic", value: data.colleague_name, inline: true },
+                        { name: "👤 Angajat", value: data.colleague_name, inline: true },
                         { name: "📅 Data", value: data.date, inline: true },
                         { name: "⏰ Interval", value: `${data.start_time} - ${data.end_time}`, inline: false },
                         { name: "⏳ Timp Total Lucrat", value: `**${data.duration}**`, inline: true }
@@ -549,7 +535,7 @@
         async function createActiveShiftRecord() {
             const activeRecord = {
                 discord_id: currentUser.discord_id || 'necunoscut',
-                colleague_name: currentUser.display_name || currentUser.username || 'Mecanic',
+                colleague_name: currentUser.display_name || currentUser.username || 'Angajat',
                 date: getRomanianDate(shiftStartTime),
                 start_time: getRomanianTime(shiftStartTime),
                 end_time: null,
@@ -752,10 +738,15 @@
         }
 
         function getWorkedSeconds(record, now = new Date()) {
+            if (record.status === 'paused') {
+                return Math.floor((Number(record.duration_ms) || 0) / 1000);
+            }
+
             const started = new Date(record.started_at).getTime();
-            let paused = Number(record.paused_seconds) || 0;
-            if (record.status === 'paused' && record.paused_at) paused += Math.max(0, Math.floor((now - new Date(record.paused_at)) / 1000));
-            return Math.max(0, Math.floor((now.getTime() - started) / 1000) - paused);
+            const totalSeconds = Math.floor((now.getTime() - started) / 1000);
+            const pausedSeconds = Number(record.paused_seconds) || 0;
+
+            return Math.max(0, totalSeconds - pausedSeconds);
         }
 
         function syncActiveShiftUI() {
@@ -821,16 +812,40 @@
                 const now = getRomanianNowDateTime();
                 const autoStopAt = getShiftDeadline(selectedShiftType, now);
                 const newShift = {
-                    discord_id: currentUser.discord_id, colleague_name: currentUser.display_name || currentUser.username || 'Mecanic', date: getRomanianDate(now), start_time: getRomanianTime(now), end_time: null,
-                    duration: '00:00:00', duration_ms: 0, shift_type: selectedShiftType, created_at: now.toISOString(),
-                    started_at: now.toISOString(), auto_stop_at: autoStopAt.toISOString(), status: 'active', paused_seconds: 0, paused_at: null, stop_reason: null
+                    organization_id: currentUser.organization_id,
+
+                    discord_id: currentUser.discord_id,
+
+                    colleague_name: currentUser.display_name || currentUser.username || 'Angajat',
+
+                    date: getRomanianDate(now),
+                    start_time: getRomanianTime(now),
+                    end_time: null,
+
+                    duration: '00:00:00',
+                    duration_ms: 0,
+
+                    shift_type: selectedShiftType,
+
+                    status: 'active',
+
+                    started_at: now.toISOString(),
+                    auto_stop_at: autoStopAt.toISOString(),
+
+                    paused_seconds: 0,
+                    paused_at: null,
+
+                    stop_reason: null,
+
+                    created_at: now.toISOString(),
+                    updated_at: now.toISOString()
                 };
                 const { data, error } = await supabaseClient.from('shifts').insert([newShift]).select('*').single();
                 if (error) throw error;
                 activeShiftRecord = data;
                 activeShiftId = data.id;
                 syncActiveShiftUI(); startTimer();
-                await sendGeneralDiscordWebhook('▶️ Pontaj Start', `Mecanicul **${currentUser.display_name}** a pornit tura de **${selectedShiftType.toUpperCase()}**.`, 3066993);
+                await sendGeneralDiscordWebhook('▶️ Pontaj Start', `Angajatul **${currentUser.display_name}** a pornit tura de **${selectedShiftType.toUpperCase()}**.`, 3066993);
             } catch (error) { console.error('Eroare pornire pontaj:', error); alert('Pontajul nu a putut fi pornit.'); }
             finally { isActionProcessing = false; }
         }
@@ -843,12 +858,26 @@
                 let update;
                 if (activeShiftRecord.status === 'paused') {
                     const pausedFor = Math.max(0, Math.floor((now - new Date(activeShiftRecord.paused_at)) / 1000));
-                    update = { status: 'active', paused_at: null, paused_seconds: (Number(activeShiftRecord.paused_seconds) || 0) + pausedFor };
-                } else update = { status: 'paused', paused_at: now.toISOString() };
+
+                    update = {
+                        status: 'active',
+                        paused_at: null,
+                        paused_seconds: (Number(activeShiftRecord.paused_seconds) || 0) + pausedFor,
+                        duration_ms: Number(activeShiftRecord.duration_ms) || 0
+                    };
+                } else {
+                    const workedNow = getWorkedSeconds(activeShiftRecord, now);
+
+                    update = {
+                        status: 'paused',
+                        paused_at: now.toISOString(),
+                        duration_ms: workedNow * 1000
+                    };
+                }
                 const { data, error } = await supabaseClient.from('shifts').update(update).eq('id', activeShiftRecord.id).select('*').single();
                 if (error) throw error;
                 activeShiftRecord = data; syncActiveShiftUI();
-                await sendGeneralDiscordWebhook(activeShiftRecord.status === 'paused' ? '⏸️ Pontaj Pauză' : '▶️ Pontaj Reluat', `Mecanicul **${currentUser.display_name}** a ${activeShiftRecord.status === 'paused' ? 'pus tura pe pauză' : 'reluat tura'}.`, activeShiftRecord.status === 'paused' ? 16776960 : 3066993);
+                await sendGeneralDiscordWebhook(activeShiftRecord.status === 'paused' ? '⏸️ Pontaj Pauză' : '▶️ Pontaj Reluat', `Angajatul **${currentUser.display_name}** a ${activeShiftRecord.status === 'paused' ? 'pus tura pe pauză' : 'reluat tura'}.`, activeShiftRecord.status === 'paused' ? 16776960 : 3066993);
             } catch (error) { console.error('Eroare pauză pontaj:', error); alert('Starea pauzei nu a putut fi salvată.'); }
             finally { isActionProcessing = false; }
         }
@@ -907,7 +936,7 @@
 
         async function sendStopShiftDiscordWebhook(data) {
             const payload = { embeds: [{ title: `⏹️ Pontaj Încheiat - Tură de ${data.shift_type.toUpperCase()}`, color: data.shift_type === 'zi' ? 16766720 : 65535, fields: [
-                { name: '👤 Mecanic', value: data.colleague_name, inline: true }, { name: '📅 Data', value: data.date, inline: true },
+                { name: '👤 Angajat', value: data.colleague_name, inline: true }, { name: '📅 Data', value: data.date, inline: true },
                 { name: '⏰ Interval', value: `${data.start_time} - ${data.end_time}`, inline: false }, { name: '⏳ Timp Total Lucrat', value: `**${data.duration}**`, inline: true },
                 { name: '📝 Motiv', value: data.reason || data.stop_reason || 'Încheiere manuală', inline: false }
             ], timestamp: new Date().toISOString() }] };

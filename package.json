@@ -1,14 +1,6 @@
 {
-  "name": "workforce-backend",
-  "version": "1.0.0",
-  "description": "Backend pentru Workforce Management System",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "sqlite3": "^5.1.7"
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
   }
 }

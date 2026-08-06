@@ -5,23 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rapoarte & Pontaj Activ - Workforce Management</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="css/tailwind.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
@@ -97,7 +81,7 @@
             <!-- Profil Utilizator Dinamic -->
             <div class="p-4 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between">
                 <div class="flex items-center space-x-3 overflow-hidden">
-                    <img id="user-avatar" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
+                    <img id="user-avatar" src="img/logo-192.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
                     <div class="truncate">
                         <p id="user-display-name" class="text-sm font-semibold text-slate-200 truncate">Se încarcă...</p>
                         <p id="user-role" class="text-xs text-emerald-400 truncate">Mecanic</p>
@@ -391,7 +375,7 @@
         let isPaused = false;
         let shiftStartTime = null;
         let isActionProcessing = false;
-        let currentUser = { discord_id: '', display_name: 'Mecanic', role: 'Mecanic' };
+        let currentUser = { discord_id: '', display_name: 'Mecanic', role: 'Mecanic', organization_id: '', permission_level: 0 };
         let canManagePontaj = false;
         let adminAbsences = [];
         let activeShiftsData = [];
@@ -431,15 +415,17 @@
                 currentUser.discord_id = activeUser.discord_id || activeUser.id;
                 currentUser.display_name = activeUser.display_name || activeUser.username || activeUser.name || 'Mecanic';
                 currentUser.role = activeUser.role || activeUser.default_role || 'Mecanic';
+                currentUser.organization_id = activeUser.organization_id || localData.organization_id || '';
+                currentUser.permission_level = Number(activeUser.permission_level ?? localData.permission_level ?? 0);
                 usersMap[String(currentUser.discord_id).trim()] = currentUser.display_name;
-                const userAvatar = activeUser.avatar || activeUser.avatar_url || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png';
+                const userAvatar = activeUser.avatar || activeUser.avatar_url || 'img/logo-192.png';
 
                 document.getElementById('user-display-name').textContent = currentUser.display_name;
                 document.getElementById('user-role').textContent = currentUser.role;
                 document.getElementById('user-avatar').src = userAvatar;
 
                 const roleLower = currentUser.role.toLowerCase();
-                canManagePontaj = roleLower.includes('coordonator') || roleLower.includes('manager') || roleLower.includes('lider') || roleLower.includes('admin') || roleLower.includes('owner');
+                canManagePontaj = currentUser.platform_admin === true || currentUser.permission_level >= 1 || roleLower.includes('coordonator') || roleLower.includes('manager') || roleLower.includes('lider') || roleLower.includes('admin') || roleLower.includes('owner') || roleLower.includes('fondator') || roleLower.includes('sef') || roleLower.includes('șef');
                 const isPrivileged = roleLower.includes('sef') || roleLower.includes('șef') || roleLower.includes('coordonator') || roleLower.includes('manager') || roleLower.includes('lider') || roleLower.includes('admin') || roleLower.includes('owner');
 
                 if (isPrivileged) {
@@ -701,7 +687,8 @@
                 // Numele se poate schimba la o autentificare Discord, deci directorul
                 // trebuie reîmprospătat și la actualizarea listei de ture active.
                 await fetchUsersData();
-                const { data, error } = await supabaseClient.from('shifts').select('*').in('status', ['active', 'paused']).order('created_at', { ascending: false });
+                let activeQuery = supabaseClient.from('shifts').select('*').in('status', ['active', 'paused']).is('end_time', null).order('created_at', { ascending: false });
+                const { data, error } = await activeQuery;
                 if (error) throw error;
                 activeShiftsData = data || [];
                 if (!activeShiftsData.length) { container.innerHTML = '<p class="text-xs text-slate-500 md:col-span-3 py-3">Nu există pontaje active în acest moment.</p>'; return; }
@@ -759,7 +746,8 @@
         async function forceStopActiveShift(shiftId) {
             if (!requireManager() || !confirm('Oprești acest pontaj în numele mecanicului?')) return;
             try {
-                const { data: shift, error: readError } = await supabaseClient.from('shifts').select('*').eq('id', shiftId).maybeSingle();
+                let readQuery = supabaseClient.from('shifts').select('*').eq('id', shiftId).in('status', ['active', 'paused']).is('end_time', null);
+                const { data: shift, error: readError } = await readQuery.maybeSingle();
                 if (readError || !shift) throw readError || new Error('Pontaj negăsit');
                 const start = new Date(`${shift.date}T${shift.start_time || '00:00:00'}`);
                 const seconds = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));

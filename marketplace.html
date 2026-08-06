@@ -5,23 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Marketplace Intern - Panel</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="css/tailwind.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
@@ -93,7 +77,7 @@
             <!-- Profil Utilizator Dinamic -->
             <div class="p-4 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between">
                 <div class="flex items-center space-x-3 overflow-hidden">
-                    <img id="user-avatar" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
+                    <img id="user-avatar" src="img/logo-192.png" class="w-10 h-10 rounded-full border border-slate-700 flex-shrink-0 object-cover" alt="Avatar">
                     <div class="truncate">
                         <p id="user-display-name" class="text-sm font-semibold text-slate-200 truncate">Se încarcă...</p>
                         <p id="user-role" class="text-xs text-emerald-400 truncate">Mecanic</p>
@@ -371,7 +355,7 @@
                 currentUser.display_name = activeUser.display_name || activeUser.username || 'Mecanic';
                 currentUser.role = activeUser.role || activeUser.default_role || 'Mecanic';
 
-                const userAvatar = activeUser.avatar || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f468-200d-1f4bb.png';
+                const userAvatar = activeUser.avatar || 'img/logo-192.png';
 
                 document.getElementById('user-display-name').textContent = currentUser.display_name;
                 document.getElementById('user-role').textContent = currentUser.role;
